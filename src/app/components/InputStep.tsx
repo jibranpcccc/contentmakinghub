@@ -19,8 +19,8 @@ const PRESET_LANGUAGES = [
 interface KeywordStatus {
   keyword: string;
   status: "waiting" | "generating" | "done" | "error";
-  count: number;
-  titlesGenerated: number;
+  titles: string[];
+  error?: string;
 }
 
 export default function InputStep({ onNext }: InputStepProps) {
@@ -31,12 +31,10 @@ export default function InputStep({ onNext }: InputStepProps) {
   const [customLang, setCustomLang] = useState("");
   const [showCustom, setShowCustom] = useState(false);
   const [keywordStatuses, setKeywordStatuses] = useState<KeywordStatus[]>([]);
-  const [totalDone, setTotalDone] = useState(0);
-  const [totalKeywords, setTotalKeywords] = useState(0);
+  const [expandedKw, setExpandedKw] = useState<string | null>(null);
 
   const keywordCount = keywordText.split("\n").map((k) => k.trim()).filter((k) => k.length > 0).length;
   const isFormValid = keywordCount > 0 && state.totalArticles > 0 && state.language.length > 0;
-  const titlesPerKeyword = keywordCount > 0 ? Math.max(1, Math.ceil(state.totalArticles / keywordCount)) : 0;
 
   const handleLanguageChange = (val: string) => {
     if (val === "Custom...") { setShowCustom(true); } else { setShowCustom(false); dispatch({ type: "SET_LANGUAGE", payload: val }); }
@@ -48,66 +46,59 @@ export default function InputStep({ onNext }: InputStepProps) {
     dispatch({ type: "SET_KEYWORDS", payload: keywords });
     setIsGenerating(true);
     setError(null);
-    setTotalDone(0);
-    setTotalKeywords(keywords.length);
 
-    // Init keyword statuses
-    setKeywordStatuses(keywords.map((kw) => ({ keyword: kw, status: "waiting", count: 0, titlesGenerated: 0 })));
+    const total = state.totalArticles;
+    const base = Math.floor(total / keywords.length);
+    const remainder = total % keywords.length;
+
+    // Init statuses
+    const statuses: KeywordStatus[] = keywords.map((kw) => ({ keyword: kw, status: "waiting", titles: [] }));
+    setKeywordStatuses(statuses);
 
     const allTitles: GeneratedTitle[] = [];
 
-    try {
-      const res = await fetch("/api/generate-titles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keywords, totalArticles: state.totalArticles, language: state.language }),
-      });
+    // Process each keyword one by one (each call is fast, no timeout)
+    for (let i = 0; i < keywords.length; i++) {
+      const kw = keywords[i];
+      const count = base + (i < remainder ? 1 : 0);
+      if (count === 0) continue;
 
-      if (!res.body) throw new Error("No response body");
+      setKeywordStatuses((prev) => prev.map((ks) =>
+        ks.keyword === kw ? { ...ks, status: "generating" } : ks
+      ));
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder("utf-8");
-      let done = false;
+      try {
+        const res = await fetch("/api/generate-titles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ keyword: kw, count, language: state.language }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed");
 
-      while (!done) {
-        const { value, done: rd } = await reader.read();
-        done = rd;
-        if (!value) continue;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split("\n")) {
-          if (!line.startsWith("data: ")) continue;
-          const raw = line.replace("data: ", "").trim();
-          if (!raw) continue;
-          try {
-            const ev = JSON.parse(raw);
-            if (ev.type === "KEYWORD_START") {
-              setKeywordStatuses((prev) => prev.map((ks, i) =>
-                ks.keyword === ev.keyword ? { ...ks, status: "generating", count: ev.count } : ks
-              ));
-            } else if (ev.type === "KEYWORD_DONE") {
-              allTitles.push(...ev.titles);
-              setTotalDone((p) => p + 1);
-              setKeywordStatuses((prev) => prev.map((ks) =>
-                ks.keyword === ev.keyword ? { ...ks, status: "done", titlesGenerated: ev.titles.length } : ks
-              ));
-            } else if (ev.type === "KEYWORD_ERROR") {
-              allTitles.push(...ev.titles);
-              setTotalDone((p) => p + 1);
-              setKeywordStatuses((prev) => prev.map((ks) =>
-                ks.keyword === ev.keyword ? { ...ks, status: "error", titlesGenerated: ev.titles.length } : ks
-              ));
-            } else if (ev.type === "DONE") {
-              dispatch({ type: "SET_GENERATED_TITLES", payload: allTitles });
-              onNext();
-            }
-          } catch {}
+        const titles: GeneratedTitle[] = data.titles;
+        allTitles.push(...titles);
+
+        setKeywordStatuses((prev) => prev.map((ks) =>
+          ks.keyword === kw ? { ...ks, status: "done", titles: titles.map((t) => t.title) } : ks
+        ));
+      } catch (err: any) {
+        // Fallback titles
+        for (let j = 0; j < count; j++) {
+          allTitles.push({ keyword: kw, title: `${kw} Guide #${j + 1}`, selected: true });
         }
+        setKeywordStatuses((prev) => prev.map((ks) =>
+          ks.keyword === kw ? { ...ks, status: "error", error: err.message } : ks
+        ));
       }
-    } catch (err: any) {
-      setError(err.message || "Something went wrong.");
-      setIsGenerating(false);
     }
+
+    dispatch({ type: "SET_GENERATED_TITLES", payload: allTitles });
+    setIsGenerating(false);
+    onNext();
   };
+
+  const totalDone = keywordStatuses.filter((ks) => ks.status === "done" || ks.status === "error").length;
 
   return (
     <div className="card" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
@@ -118,38 +109,53 @@ export default function InputStep({ onNext }: InputStepProps) {
         </div>
       )}
 
-      {/* Show progress when generating */}
       {isGenerating ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h2 style={{ fontSize: "1.15rem", fontWeight: 700 }}>
               <span className="pulse">⚡</span> Generating Titles...
             </h2>
-            <span className="badge badge-accent">{totalDone} / {totalKeywords} keywords</span>
+            <span className="badge badge-accent">{totalDone} / {keywordStatuses.length} keywords</span>
           </div>
 
           <div className="progress-track">
-            <div className="progress-fill" style={{ width: `${totalKeywords > 0 ? (totalDone / totalKeywords) * 100 : 0}%` }} />
+            <div className="progress-fill" style={{ width: `${keywordStatuses.length > 0 ? (totalDone / keywordStatuses.length) * 100 : 0}%` }} />
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", maxHeight: "350px", overflowY: "auto" }}>
-            {keywordStatuses.map((ks, i) => (
-              <div key={i} style={{
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                padding: "0.45rem 0.65rem", background: ks.status === "generating" ? "var(--accent-soft)" : "var(--bg-dark)",
-                borderRadius: "var(--radius-sm)",
-                borderLeft: `3px solid ${ks.status === "done" ? "var(--success)" : ks.status === "generating" ? "var(--accent)" : ks.status === "error" ? "var(--error)" : "transparent"}`,
-                fontSize: "0.85rem",
-              }}>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "65%" }}>{ks.keyword}</span>
-                <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
-                  {ks.status === "done" && <span className="badge badge-success">{ks.titlesGenerated} titles ✓</span>}
-                  {ks.status === "generating" && <span className="badge badge-accent pulse">Generating...</span>}
-                  {ks.status === "error" && <span className="badge badge-error">Error</span>}
-                  {ks.status === "waiting" && <span className="badge badge-muted">Waiting</span>}
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", maxHeight: "450px", overflowY: "auto" }}>
+            {keywordStatuses.map((ks, i) => {
+              const isExpanded = expandedKw === ks.keyword;
+              return (
+                <div key={i} style={{ background: ks.status === "generating" ? "var(--accent-soft)" : "var(--bg-dark)", borderRadius: "var(--radius-md)", borderLeft: `3px solid ${ks.status === "done" ? "var(--success)" : ks.status === "generating" ? "var(--accent)" : ks.status === "error" ? "var(--error)" : "transparent"}`, overflow: "hidden" }}>
+                  <div
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem 0.7rem", cursor: ks.titles.length > 0 ? "pointer" : "default", fontSize: "0.85rem" }}
+                    onClick={() => ks.titles.length > 0 && setExpandedKw(isExpanded ? null : ks.keyword)}
+                  >
+                    <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "60%" }}>{ks.keyword}</span>
+                    <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                      {ks.status === "done" && (
+                        <>
+                          <span className="badge badge-success">{ks.titles.length} titles ✓</span>
+                          <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{isExpanded ? "▲" : "▼"}</span>
+                        </>
+                      )}
+                      {ks.status === "generating" && <span className="badge badge-accent pulse">Generating...</span>}
+                      {ks.status === "error" && <span className="badge badge-error">Error</span>}
+                      {ks.status === "waiting" && <span className="badge badge-muted">Waiting</span>}
+                    </div>
+                  </div>
+                  {isExpanded && ks.titles.length > 0 && (
+                    <div style={{ padding: "0 0.7rem 0.5rem", display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                      {ks.titles.map((t, j) => (
+                        <div key={j} style={{ fontSize: "0.8rem", color: "var(--text-secondary)", padding: "0.25rem 0.5rem", background: "var(--bg-surface)", borderRadius: "var(--radius-sm)" }}>
+                          {j + 1}. {t}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : (
@@ -157,14 +163,8 @@ export default function InputStep({ onNext }: InputStepProps) {
           {/* Language Selection */}
           <div>
             <label className="field-label">🌐 Output Language</label>
-            <select
-              value={showCustom ? "Custom..." : state.language}
-              onChange={(e) => handleLanguageChange(e.target.value)}
-              style={{ width: "280px" }}
-            >
-              {PRESET_LANGUAGES.map((lang) => (
-                <option key={lang} value={lang}>{lang}</option>
-              ))}
+            <select value={showCustom ? "Custom..." : state.language} onChange={(e) => handleLanguageChange(e.target.value)} style={{ width: "280px" }}>
+              {PRESET_LANGUAGES.map((lang) => (<option key={lang} value={lang}>{lang}</option>))}
             </select>
             {showCustom && (
               <input type="text" placeholder="Type your language..." value={customLang}
@@ -191,16 +191,14 @@ export default function InputStep({ onNext }: InputStepProps) {
               rows={5} style={{ resize: "vertical", fontFamily: "monospace", fontSize: "0.9rem" }} />
             <p className="field-hint">
               {keywordCount} keyword{keywordCount !== 1 ? "s" : ""}
-              {keywordCount > 0 && <> → <strong>{titlesPerKeyword} title{titlesPerKeyword !== 1 ? "s" : ""}</strong> per keyword</>}
+              {keywordCount > 0 && state.totalArticles > 0 && <> → <strong>~{Math.max(1, Math.ceil(state.totalArticles / keywordCount))} titles</strong> per keyword</>}
             </p>
           </div>
 
-          {/* Info */}
           <div style={{ background: "var(--accent-soft)", borderRadius: "var(--radius-md)", padding: "0.75rem 1rem", fontSize: "0.85rem", color: "var(--accent)" }}>
             💡 50 unique article styles rotate automatically. Language: <strong>{state.language}</strong>
           </div>
 
-          {/* Generate Button */}
           <button onClick={handleGenerate} disabled={!isFormValid} className="btn-primary"
             style={{ alignSelf: "stretch", justifyContent: "center", padding: "0.85rem", fontSize: "1rem" }}>
             🚀 Generate {state.totalArticles} Article Titles

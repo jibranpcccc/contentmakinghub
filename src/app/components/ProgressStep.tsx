@@ -85,15 +85,34 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
           }),
         });
 
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed");
+        if (!res.ok) {
+          const errData = await res.json().catch(() => null);
+          throw new Error(errData?.error || "Failed");
+        }
+        
+        if (!res.body) throw new Error("No response body");
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let fullContent = "";
+        let doneReading = false;
+
+        while (!doneReading && !cancelledRef.current) {
+          const { value, done: rd } = await reader.read();
+          doneReading = rd;
+          if (value) {
+            fullContent += decoder.decode(value, { stream: true });
+          }
+        }
+        
+        if (fullContent.includes("ERROR:")) throw new Error(fullContent.split("ERROR:")[1].trim());
 
         // Update to done
         setJobs((prev) => prev.map((j) => j.id === job.id ? { ...j, status: "done" } : j));
         dispatch({ type: "UPDATE_JOB", payload: { id: job.id, status: "done" } });
         dispatch({
           type: "ADD_ARTICLE",
-          payload: { id: job.id, title: data.title, keyword: data.keyword, promptUsed: data.promptUsed, content: data.content, generatedAt: data.generatedAt },
+          payload: { id: job.id, title: job.title, keyword: job.keyword, promptUsed: state.prompts[job.promptIndex].split(":")[0], content: fullContent, generatedAt: Date.now() },
         });
       } catch (err: any) {
         setJobs((prev) => prev.map((j) => j.id === job.id ? { ...j, status: "error", error: err.message } : j));

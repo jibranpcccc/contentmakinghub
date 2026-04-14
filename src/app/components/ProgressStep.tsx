@@ -61,8 +61,8 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
       payload: newJobs.map((j, i) => ({ id: j.id, titleIndex: i, promptIndex: j.promptIndex, status: "queued" })),
     });
 
-    // Process with client-side concurrency (5 at a time for Netlify stability)
-    const CONCURRENCY = 5;
+    // Process with client-side concurrency (20 parallel threads)
+    const CONCURRENCY = 20;
     let nextIndex = 0;
 
     const processOne = async (jobIndex: number) => {

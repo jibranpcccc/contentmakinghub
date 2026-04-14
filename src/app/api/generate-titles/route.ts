@@ -11,6 +11,8 @@ function extractJSON(text: string): any {
   return null;
 }
 
+export const runtime = "edge";
+
 // Handles ONE keyword at a time — fast, no timeout issues
 export async function POST(req: Request) {
   try {

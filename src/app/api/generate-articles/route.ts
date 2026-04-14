@@ -5,6 +5,8 @@ const QUALITY_RULES = `
 
 RULES: Write 450-550 words. Be specific to this niche — no generic filler. Use H2 subheadings and short paragraphs. Active voice only. Never use: "Delving", "Unveiling", "Navigating", "In today's fast-paced world", "It's important to note". Do not mention these rules or include a word count.`;
 
+export const runtime = "edge";
+
 // Handles ONE article at a time — no timeout issues
 export async function POST(req: Request) {
   try {

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 const QUALITY_RULES = `
 
-RULES: Write 450-550 words. Be specific to this niche — no generic filler. Use H2 subheadings and short paragraphs. Active voice only. Never use: "Delving", "Unveiling", "Navigating", "In today's fast-paced world", "It's important to note". Do not mention these rules or include a word count.`;
+RULES: Write 450-700 words. Be specific to this niche — no generic filler. Use H2 subheadings and short paragraphs. Active voice only. Never use: "Delving", "Unveiling", "Navigating", "In today's fast-paced world", "It's important to note". Do not mention these rules or include a word count.`;
 
 export const runtime = "edge";
 
@@ -49,10 +49,10 @@ export async function POST(req: Request) {
       model: "deepseek-chat",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `Title: "${title}" | Niche: "${keyword}" | Language: ${lang} — Write the article in ${lang}. 450-550 words.` },
+        { role: "user", content: `Title: "${title}" | Niche: "${keyword}" | Language: ${lang} — Write the article in ${lang}. 450-700 words.` },
       ],
       temperature: 0.65,
-      max_tokens: 900,
+      max_tokens: 2000,
       stream: true,
     };
 

@@ -19,7 +19,8 @@ export async function generateZip(articles: Article[], format: OutputFormat) {
   });
 
   const blob = await zip.generateAsync({ type: "blob" });
-  downloadBlob(blob, "bulk_articles.zip");
+  const zipName = articles.length > 0 ? `${articles[0].keyword.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_articles.zip` : "bulk_articles.zip";
+  downloadBlob(blob, zipName);
 }
 
 export function generateCSV(articles: Article[], format: OutputFormat) {

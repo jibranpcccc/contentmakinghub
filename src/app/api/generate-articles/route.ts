@@ -9,8 +9,9 @@ export const runtime = "edge";
 // Streams raw text back to the browser to ensure Netlify NEVER times out
 export async function POST(req: Request) {
   try {
-    const { title, keyword, prompt, language } = await req.json();
+    const { title, keyword, prompt, language, outputFormat } = await req.json();
     const lang = language || "English";
+    const fmt = outputFormat || "markdown";
 
     if (!title || !keyword || !prompt) {
       return NextResponse.json({ error: "Missing title, keyword, or prompt" }, { status: 400 });
@@ -19,9 +20,30 @@ export async function POST(req: Request) {
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) return NextResponse.json({ error: "Missing API Key" }, { status: 500 });
 
+    // Build format instruction based on user selection
+    let formatRule = "";
+    switch (fmt) {
+      case "plain":
+        formatRule = "\nFORMAT: Write in plain text only. Do NOT use any markdown, HTML, or special formatting. Write headings as plain uppercase text on their own line. No #, no **, no tags.";
+        break;
+      case "html":
+        formatRule = "\nFORMAT: Use HTML tags ONLY for headings (<h2> and <h3>). Everything else must be plain text with no HTML tags, no <p>, no <b>, no markdown. Just headings in HTML, rest is plain text.";
+        break;
+      case "bbcode":
+        formatRule = "\nFORMAT: Use BBCode formatting. Headings as [h2]Heading[/h2] and [h3]Heading[/h3]. Bold as [b]text[/b]. No markdown, no HTML.";
+        break;
+      case "wiki":
+        formatRule = "\nFORMAT: Use MediaWiki formatting. Headings as == Heading == and === Subheading ===. Bold as '''text'''. No markdown, no HTML.";
+        break;
+      case "markdown":
+      default:
+        formatRule = "\nFORMAT: Use Markdown formatting. Headings as ## and ###. Bold as **text**. Standard markdown.";
+        break;
+    }
+
     const systemPrompt = prompt
       .replace(/\[topic\]/gi, keyword)
-      .replace(/\[keyword\]/gi, keyword) + QUALITY_RULES + `\nLANGUAGE: Write the ENTIRE article in ${lang}. Every word must be in ${lang}.`;
+      .replace(/\[keyword\]/gi, keyword) + QUALITY_RULES + formatRule + `\nLANGUAGE: Write the ENTIRE article in ${lang}. Every word must be in ${lang}.`;
 
     const payload = {
       model: "deepseek-chat",

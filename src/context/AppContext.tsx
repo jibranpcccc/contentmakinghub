@@ -109,6 +109,7 @@ const defaultPrompts = [
 
 const initialState: AppState = {
   language: "English",
+  outputFormat: "markdown",
   keywords: [],
   prompts: defaultPrompts,
   selectedPromptIndices: Array.from({ length: 50 }, (_, i) => i),
@@ -122,6 +123,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case "SET_LANGUAGE":
       return { ...state, language: action.payload };
+    case "SET_OUTPUT_FORMAT":
+      return { ...state, outputFormat: action.payload };
     case "SET_KEYWORDS":
       return { ...state, keywords: action.payload };
     case "SET_PROMPTS":

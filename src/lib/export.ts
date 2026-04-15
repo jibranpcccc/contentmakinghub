@@ -6,7 +6,7 @@ export async function generateZip(articles: Article[]) {
 
   articles.forEach((article, index) => {
     const sanitizedTitle = article.title.replace(/[^a-z0-9]/gi, "_").replace(/_+/g, "_").toLowerCase().slice(0, 80);
-    const filename = `${index + 1}_${sanitizedTitle}.md`;
+    const filename = `${index + 1}_${sanitizedTitle}.txt`;
 
     const content = `# ${article.title}\n\n${article.content}`;
     zip.file(filename, content);

@@ -82,6 +82,7 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
             keyword: job.keyword,
             prompt: state.prompts[job.promptIndex],
             language: state.language,
+            outputFormat: state.outputFormat,
           }),
         });
 

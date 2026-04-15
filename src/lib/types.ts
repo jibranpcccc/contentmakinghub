@@ -1,5 +1,7 @@
 export type JobStatus = "queued" | "running" | "done" | "error";
 
+export type OutputFormat = "markdown" | "plain" | "html" | "bbcode" | "wiki";
+
 export interface Job {
   id: string;
   titleIndex: number;
@@ -25,6 +27,7 @@ export interface GeneratedTitle {
 
 export interface AppState {
   language: string;              // output language
+  outputFormat: OutputFormat;    // article heading format
   keywords: string[];
   prompts: string[];
   selectedPromptIndices: number[];
@@ -36,6 +39,7 @@ export interface AppState {
 
 export type AppAction =
   | { type: "SET_LANGUAGE"; payload: string }
+  | { type: "SET_OUTPUT_FORMAT"; payload: OutputFormat }
   | { type: "SET_KEYWORDS"; payload: string[] }
   | { type: "SET_PROMPTS"; payload: string[] }
   | { type: "SET_SELECTED_PROMPT_INDICES"; payload: number[] }

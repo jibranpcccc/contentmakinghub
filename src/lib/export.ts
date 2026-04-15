@@ -1,6 +1,6 @@
-import { Article } from "./types";
+import { Article, OutputFormat } from "./types";
 
-export async function generateZip(articles: Article[]) {
+export async function generateZip(articles: Article[], format: OutputFormat) {
   const JSZip = (await import("jszip")).default;
   const zip = new JSZip();
 
@@ -8,7 +8,13 @@ export async function generateZip(articles: Article[]) {
     const sanitizedTitle = article.title.replace(/[^a-z0-9]/gi, "_").replace(/_+/g, "_").toLowerCase().slice(0, 80);
     const filename = `${index + 1}_${sanitizedTitle}.txt`;
 
-    const content = `# ${article.title}\n\n${article.content}`;
+    let formattedTitle = `# ${article.title}\n\n`;
+    if (format === "plain") formattedTitle = `${article.title}\n\n`;
+    if (format === "html") formattedTitle = `<h1>${article.title}</h1>\n\n`;
+    if (format === "bbcode") formattedTitle = `[h1]${article.title}[/h1]\n\n`;
+    if (format === "wiki") formattedTitle = `= ${article.title} =\n\n`;
+
+    const content = `${formattedTitle}${article.content}`;
     zip.file(filename, content);
   });
 
@@ -16,7 +22,7 @@ export async function generateZip(articles: Article[]) {
   downloadBlob(blob, "bulk_articles.zip");
 }
 
-export function generateCSV(articles: Article[]) {
+export function generateCSV(articles: Article[], format: OutputFormat) {
   const headers = ["Title", "Content"];
   const rows = articles.map((a) => [
     `"${a.title.replace(/"/g, '""')}"`,

@@ -24,16 +24,25 @@ export default function ResultsStep({ onRestart }: ResultsStepProps) {
   const uniqueKeywords = new Set(state.articles.map((a) => a.keyword));
   const totalWords = state.articles.reduce((sum, a) => sum + a.content.split(/\s+/).length, 0);
 
+  const getFormattedTitle = (title: string, format: string) => {
+    if (format === "plain") return `${title}`;
+    if (format === "html") return `<h1>${title}</h1>`;
+    if (format === "bbcode") return `[h1]${title}[/h1]`;
+    if (format === "wiki") return `= ${title} =`;
+    return `# ${title}`;
+  };
+
   const copyArticle = async (article: Article) => {
     try {
-      await navigator.clipboard.writeText(`# ${article.title}\n\n${article.content}`);
+      const topTitle = getFormattedTitle(article.title, state.outputFormat);
+      await navigator.clipboard.writeText(`${topTitle}\n\n${article.content}`);
       setCopiedId(article.id);
       setTimeout(() => setCopiedId(null), 2000);
     } catch {}
   };
 
   const copyAll = async () => {
-    const allText = state.articles.map((a) => `# ${a.title}\n\n${a.content}`).join("\n\n---\n\n");
+    const allText = state.articles.map((a) => `${getFormattedTitle(a.title, state.outputFormat)}\n\n${a.content}`).join("\n\n---\n\n");
     try {
       await navigator.clipboard.writeText(allText);
       setCopiedId("ALL");
@@ -62,10 +71,10 @@ export default function ResultsStep({ onRestart }: ResultsStepProps) {
 
         {/* BIG Download Buttons */}
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-          <button className="btn-success" style={{ flex: 1, minWidth: "200px" }} onClick={() => generateZip(state.articles)}>
+          <button className="btn-success" style={{ flex: 1, minWidth: "200px" }} onClick={() => generateZip(state.articles, state.outputFormat)}>
             📦 Download ZIP ({state.articles.length} files)
           </button>
-          <button className="btn-primary" style={{ flex: 1, minWidth: "200px" }} onClick={() => generateCSV(state.articles)}>
+          <button className="btn-primary" style={{ flex: 1, minWidth: "200px" }} onClick={() => generateCSV(state.articles, state.outputFormat)}>
             📊 Download CSV
           </button>
           <button className="btn-outlined" style={{ flex: 1, minWidth: "200px" }} onClick={copyAll}>
@@ -128,7 +137,7 @@ export default function ResultsStep({ onRestart }: ResultsStepProps) {
       {/* Bottom Actions */}
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <button onClick={onRestart} className="btn-outlined">← Start New Batch</button>
-        <button className="btn-success" onClick={() => generateZip(state.articles)}>📦 Download All</button>
+        <button className="btn-success" onClick={() => generateZip(state.articles, state.outputFormat)}>📦 Download All</button>
       </div>
     </div>
   );

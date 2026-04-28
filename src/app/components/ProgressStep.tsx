@@ -61,8 +61,8 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
       payload: newJobs.map((j, i) => ({ id: j.id, titleIndex: i, promptIndex: j.promptIndex, status: "queued" })),
     });
 
-    // Process with client-side concurrency (Fast 20 threads for all models)
-    const CONCURRENCY = 20;
+    // Set concurrency to max 13 for Mistral (1 thread per key to avoid overlaps)
+    const CONCURRENCY = state.provider === "mistral" ? 13 : 20;
     let nextIndex = 0;
 
     const processOne = async (jobIndex: number, attempt = 1) => {
@@ -84,6 +84,7 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
             language: state.language,
             outputFormat: state.outputFormat,
             provider: state.provider,
+            jobIndex: jobIndex,
           }),
         });
 

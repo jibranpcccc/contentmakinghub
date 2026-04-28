@@ -9,7 +9,7 @@ export const runtime = "edge";
 // Streams raw text back to the browser to ensure Netlify NEVER times out
 export async function POST(req: Request) {
   try {
-    const { title, keyword, prompt, language, outputFormat, provider } = await req.json();
+    const { title, keyword, prompt, language, outputFormat, provider, jobIndex } = await req.json();
     const lang = language || "English";
     const fmt = outputFormat || "markdown";
 
@@ -25,7 +25,9 @@ export async function POST(req: Request) {
         .filter(k => k.startsWith("MISTRAL_API_KEY"))
         .map(k => process.env[k])
         .filter(k => k && k !== "your_mistral_api_key_here") as string[];
-      apiKey = keys.length > 0 ? keys[Math.floor(Math.random() * keys.length)] : undefined;
+      
+      const safeIndex = typeof jobIndex === "number" ? jobIndex : Math.floor(Math.random() * keys.length);
+      apiKey = keys.length > 0 ? keys[safeIndex % keys.length] : undefined;
     } else {
       apiKey = process.env.DEEPSEEK_API_KEY;
     }

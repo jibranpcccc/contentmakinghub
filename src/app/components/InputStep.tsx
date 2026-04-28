@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useAppContext } from "@/context/AppContext";
-import { GeneratedTitle, OutputFormat } from "@/lib/types";
+import { GeneratedTitle, OutputFormat, Provider } from "@/lib/types";
 
 interface InputStepProps {
   onNext: () => void;
@@ -71,7 +71,7 @@ export default function InputStep({ onNext }: InputStepProps) {
         const res = await fetch("/api/generate-titles", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ keyword: kw, count, language: state.language }),
+          body: JSON.stringify({ keyword: kw, count, language: state.language, provider: state.provider }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed");
@@ -160,6 +160,16 @@ export default function InputStep({ onNext }: InputStepProps) {
         </div>
       ) : (
         <>
+          {/* Provider Selection */}
+          <div>
+            <label className="field-label">🤖 AI Provider</label>
+            <select value={state.provider} onChange={(e) => dispatch({ type: "SET_PROVIDER", payload: e.target.value as Provider })} style={{ width: "280px" }}>
+              <option value="deepseek">DeepSeek (deepseek-chat)</option>
+              <option value="mistral">Mistral (mistral-large-latest)</option>
+            </select>
+            <p className="field-hint">Choose which AI model generates the content.</p>
+          </div>
+
           {/* Output Format Selection */}
           <div>
             <label className="field-label">📄 Output Format</label>

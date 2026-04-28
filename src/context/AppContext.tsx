@@ -106,6 +106,7 @@ const defaultPrompts = [
 ];
 
 const initialState: AppState = {
+  provider: "deepseek",
   language: "English",
   outputFormat: "markdown",
   keywords: [],
@@ -119,6 +120,8 @@ const initialState: AppState = {
 
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
+    case "SET_PROVIDER":
+      return { ...state, provider: action.payload };
     case "SET_LANGUAGE":
       return { ...state, language: action.payload };
     case "SET_OUTPUT_FORMAT":

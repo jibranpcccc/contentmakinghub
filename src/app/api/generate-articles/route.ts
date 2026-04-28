@@ -9,7 +9,7 @@ export const runtime = "edge";
 // Streams raw text back to the browser to ensure Netlify NEVER times out
 export async function POST(req: Request) {
   try {
-    const { title, keyword, prompt, language, outputFormat } = await req.json();
+    const { title, keyword, prompt, language, outputFormat, provider } = await req.json();
     const lang = language || "English";
     const fmt = outputFormat || "markdown";
 
@@ -17,8 +17,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing title, keyword, or prompt" }, { status: 400 });
     }
 
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) return NextResponse.json({ error: "Missing API Key" }, { status: 500 });
+    const isMistral = provider === "mistral";
+    
+    let apiKey: string | undefined;
+    if (isMistral) {
+      const keys = [process.env.MISTRAL_API_KEY, process.env.MISTRAL_API_KEY_1, process.env.MISTRAL_API_KEY_2].filter(k => k && k !== "your_mistral_api_key_here");
+      apiKey = keys.length > 0 ? keys[Math.floor(Math.random() * keys.length)] : undefined;
+    } else {
+      apiKey = process.env.DEEPSEEK_API_KEY;
+    }
+    
+    if (!apiKey) return NextResponse.json({ error: `Missing API Key for ${provider || "deepseek"}` }, { status: 500 });
 
     // Build format instruction based on user selection
     let formatRule = "";
@@ -46,7 +55,7 @@ export async function POST(req: Request) {
       .replace(/\[keyword\]/gi, keyword) + QUALITY_RULES + formatRule + `\nLANGUAGE: Write the ENTIRE article in ${lang}. Every word must be in ${lang}.`;
 
     const payload = {
-      model: "deepseek-chat",
+      model: isMistral ? "mistral-large-latest" : "deepseek-chat",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `Title: "${title}" | Niche: "${keyword}" | Language: ${lang} — Write the article in ${lang}. 450-700 words.` },
@@ -56,14 +65,16 @@ export async function POST(req: Request) {
       stream: true,
     };
 
-    const dsResponse = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    const apiUrl = isMistral ? "https://api.mistral.ai/v1/chat/completions" : "https://api.deepseek.com/v1/chat/completions";
+
+    const dsResponse = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify(payload),
     });
 
     if (!dsResponse.ok) {
-      return NextResponse.json({ error: `DeepSeek Error: ${dsResponse.status}` }, { status: 502 });
+      return NextResponse.json({ error: `${isMistral ? "Mistral" : "DeepSeek"} Error: ${dsResponse.status}` }, { status: 502 });
     }
 
     const encoder = new TextEncoder();

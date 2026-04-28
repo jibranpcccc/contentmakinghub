@@ -2,6 +2,8 @@ export type JobStatus = "queued" | "running" | "done" | "error";
 
 export type OutputFormat = "markdown" | "plain" | "html" | "bbcode" | "wiki";
 
+export type Provider = "deepseek" | "mistral";
+
 export interface Job {
   id: string;
   titleIndex: number;
@@ -26,6 +28,7 @@ export interface GeneratedTitle {
 }
 
 export interface AppState {
+  provider: Provider;
   language: string;              // output language
   outputFormat: OutputFormat;    // article heading format
   keywords: string[];
@@ -38,6 +41,7 @@ export interface AppState {
 }
 
 export type AppAction =
+  | { type: "SET_PROVIDER"; payload: Provider }
   | { type: "SET_LANGUAGE"; payload: string }
   | { type: "SET_OUTPUT_FORMAT"; payload: OutputFormat }
   | { type: "SET_KEYWORDS"; payload: string[] }

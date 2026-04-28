@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { callDeepSeek } from "@/lib/deepseek";
+import { callMistral } from "@/lib/mistral";
 
 function extractJSON(text: string): any {
   let clean = text.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
@@ -16,7 +17,7 @@ export const runtime = "edge";
 // Handles ONE keyword at a time — fast, no timeout issues
 export async function POST(req: Request) {
   try {
-    const { keyword, count, language } = await req.json();
+    const { keyword, count, language, provider } = await req.json();
     const lang = language || "English";
     const num = Math.min(Math.max(Number(count) || 1, 1), 50);
 
@@ -35,11 +36,20 @@ Rules:
 - BANNED: Exploring, Delving, Unveiling, Navigating, Demystifying.
 - Return ONLY a JSON array of strings. No other text.`;
 
-    const content = await callDeepSeek(
-      systemPrompt,
-      `Keyword: "${keyword}" — generate exactly ${num} titles in ${lang}. Return JSON array only.`,
-      { temperature: 0.9, max_tokens: num * 50 + 200 }
-    );
+    let content: string;
+    if (provider === "mistral") {
+      content = await callMistral(
+        systemPrompt,
+        `Keyword: "${keyword}" — generate exactly ${num} titles in ${lang}. Return JSON array only.`,
+        { temperature: 0.9, max_tokens: num * 50 + 200 }
+      );
+    } else {
+      content = await callDeepSeek(
+        systemPrompt,
+        `Keyword: "${keyword}" — generate exactly ${num} titles in ${lang}. Return JSON array only.`,
+        { temperature: 0.9, max_tokens: num * 50 + 200 }
+      );
+    }
 
     let titles: string[] = [];
     const parsed = extractJSON(content);

@@ -81,6 +81,8 @@ export async function POST(req: Request) {
     });
 
     if (!dsResponse.ok) {
+      const errTxt = await dsResponse.text();
+      console.error(`[Mistral API Error] Status: ${dsResponse.status} | Text: ${errTxt} | Key: ...${apiKey?.slice(-4)} | WorkerIndex: ${workerIndex}`);
       return NextResponse.json({ error: `${isMistral ? "Mistral" : "DeepSeek"} Error: ${dsResponse.status}` }, { status: 502 });
     }
 

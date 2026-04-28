@@ -134,6 +134,10 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
 
         const runQueue = async () => {
           const workers = Array.from({ length: CONCURRENCY }, async (_, workerIndex) => {
+            // Stagger Mistral startup by 500ms per thread to bypass IP burst rate limits
+            if (state.provider === "mistral") {
+              await new Promise(res => setTimeout(res, workerIndex * 1500));
+            }
             while (true) {
               const idx = nextIndex++;
               if (idx >= newJobs.length || cancelledRef.current) break;

@@ -10,11 +10,10 @@ export async function callMistral(
   userMessage: string,
   options: MistralOptions = {}
 ): Promise<string> {
-  const keys = [
-    process.env.MISTRAL_API_KEY,
-    process.env.MISTRAL_API_KEY_1,
-    process.env.MISTRAL_API_KEY_2
-  ].filter(k => k && k !== "your_mistral_api_key_here");
+  const keys = Object.keys(process.env)
+    .filter(k => k.startsWith("MISTRAL_API_KEY"))
+    .map(k => process.env[k])
+    .filter(k => k && k !== "your_mistral_api_key_here") as string[];
 
   if (keys.length === 0) {
     throw new Error("No MISTRAL_API_KEY found in environment variables.");

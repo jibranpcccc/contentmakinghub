@@ -21,7 +21,10 @@ export async function POST(req: Request) {
     
     let apiKey: string | undefined;
     if (isMistral) {
-      const keys = [process.env.MISTRAL_API_KEY, process.env.MISTRAL_API_KEY_1, process.env.MISTRAL_API_KEY_2].filter(k => k && k !== "your_mistral_api_key_here");
+      const keys = Object.keys(process.env)
+        .filter(k => k.startsWith("MISTRAL_API_KEY"))
+        .map(k => process.env[k])
+        .filter(k => k && k !== "your_mistral_api_key_here") as string[];
       apiKey = keys.length > 0 ? keys[Math.floor(Math.random() * keys.length)] : undefined;
     } else {
       apiKey = process.env.DEEPSEEK_API_KEY;

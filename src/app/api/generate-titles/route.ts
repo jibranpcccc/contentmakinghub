@@ -28,26 +28,26 @@ export async function POST(req: Request) {
     const systemPrompt = `You generate unique, niche-specific article titles.
 Write ALL titles in ${lang}.
 Rules:
-- Generate exactly ${num} titles for the keyword below.
+- Generate exactly ${num} titles for the keyword below. You MUST NOT stop early.
 - Every title must be relevant to the "${keyword}" niche.
 - Each title must have a DIFFERENT angle. Zero duplicates.
 - 8-15 words, punchy, click-worthy. Include the keyword naturally.
 - Mix: How-to, Top X, Why, Guide, Mistakes, Tips, Beginner's, Truth About.
 - BANNED: Exploring, Delving, Unveiling, Navigating, Demystifying.
-- Return ONLY a JSON array of strings. No other text.`;
+- Return ONLY a JSON object with a single key "titles" containing an array of strings. No other text.`;
 
     let content: string;
     if (provider === "mistral") {
       content = await callMistral(
         systemPrompt,
-        `Keyword: "${keyword}" — generate exactly ${num} titles in ${lang}. Return JSON array only.`,
-        { temperature: 0.9, max_tokens: num * 50 + 200 }
+        `Keyword: "${keyword}" — generate exactly ${num} titles in ${lang}. Return JSON object {"titles": [...]}.`,
+        { temperature: 0.9, max_tokens: 4000, response_format: { type: "json_object" } }
       );
     } else {
       content = await callDeepSeek(
         systemPrompt,
-        `Keyword: "${keyword}" — generate exactly ${num} titles in ${lang}. Return JSON array only.`,
-        { temperature: 0.9, max_tokens: num * 50 + 200 }
+        `Keyword: "${keyword}" — generate exactly ${num} titles in ${lang}. Return JSON object {"titles": [...]}.`,
+        { temperature: 0.9, max_tokens: 4000, response_format: { type: "json_object" } }
       );
     }
 

@@ -61,13 +61,17 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
       payload: newJobs.map((j, i) => ({ id: j.id, titleIndex: i, promptIndex: j.promptIndex, status: "queued" })),
     });
 
-    // Set concurrency to max 13 for Mistral (1 thread per key to avoid overlaps)
-    const CONCURRENCY = state.provider === "mistral" ? 13 : 20;
-    let nextIndex = 0;
+    // Fetch max concurrency dynamically based on available API keys
+    fetch(`/api/key-count?provider=${state.provider}`)
+      .then(res => res.json())
+      .catch(() => ({ count: null }))
+      .then(data => {
+        const CONCURRENCY = data.count || (state.provider === "mistral" ? 13 : 20);
+        let nextIndex = 0;
 
-    const processOne = async (jobIndex: number, attempt = 1) => {
-      if (cancelledRef.current) return;
-      const job = newJobs[jobIndex];
+        const processOne = async (jobIndex: number, attempt = 1) => {
+          if (cancelledRef.current) return;
+          const job = newJobs[jobIndex];
 
       // Update to running
       setJobs((prev) => prev.map((j) => j.id === job.id ? { ...j, status: "running" } : j));
@@ -141,6 +145,7 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
     };
 
     runQueue();
+      });
   }, []);
 
   const handleCancel = () => {

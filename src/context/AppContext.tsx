@@ -106,7 +106,7 @@ const defaultPrompts = [
 ];
 
 const initialState: AppState = {
-  provider: "deepseek",
+  provider: "mistral",
   language: "English",
   outputFormat: "markdown",
   keywords: [],

@@ -164,8 +164,8 @@ export default function InputStep({ onNext }: InputStepProps) {
           <div>
             <label className="field-label">🤖 AI Provider</label>
             <select value={state.provider} onChange={(e) => dispatch({ type: "SET_PROVIDER", payload: e.target.value as Provider })} style={{ width: "280px" }}>
-              <option value="deepseek">DeepSeek (deepseek-chat)</option>
               <option value="mistral">Mistral (mistral-large-latest)</option>
+              <option value="deepseek">DeepSeek (deepseek-chat)</option>
             </select>
             <p className="field-hint">Choose which AI model generates the content.</p>
           </div>

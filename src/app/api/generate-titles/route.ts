@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   try {
     const { keyword, count, language, provider } = await req.json();
     const lang = language || "English";
-    const num = Math.min(Math.max(Number(count) || 1, 1), 50);
+    const num = Math.min(Math.max(Number(count) || 1, 1), 100);
 
     if (!keyword || typeof keyword !== "string") {
       return NextResponse.json({ error: "Keyword is required" }, { status: 400 });
@@ -66,16 +66,17 @@ Rules:
         .filter((l: string) => l.length > 15 && !l.startsWith("{") && !l.startsWith("[") && !l.includes("\":"));
     }
 
-    // Deduplicate
+    // Deduplicate - Only remove exact matches or titles that are identical when stripped of punctuation
     const unique: string[] = [];
+    const seen = new Set<string>();
+    
     for (const t of titles) {
-      const lower = t.toLowerCase();
-      const isDupe = unique.some((e) => {
-        const w1 = lower.split(/\s+/).slice(0, 5).join(" ");
-        const w2 = e.toLowerCase().split(/\s+/).slice(0, 5).join(" ");
-        return w1 === w2;
-      });
-      if (!isDupe) unique.push(t);
+      // Normalize: lowercase and remove all non-alphanumeric characters for comparison
+      const normalized = t.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (!seen.has(normalized)) {
+        seen.add(normalized);
+        unique.push(t);
+      }
     }
     while (unique.length < num) unique.push(`${keyword} — Guide #${unique.length + 1}`);
 

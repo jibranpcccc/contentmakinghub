@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 const QUALITY_RULES = `
 
+CRITICAL OVERRIDE: You MUST adapt your writing to perfectly match the exact tone and audience implied by the Article Title. For example, if the title says "For Beginners", you MUST simplify the content and avoid advanced jargon, even if your role instructions suggest otherwise. The Title's intent always overrides any conflicting role instructions.
+
 RULES: Write 450-700 words. Be specific to this niche — no generic filler. Use H2 subheadings and short paragraphs. Active voice only. Never use: "Delving", "Unveiling", "Navigating", "In today's fast-paced world", "It's important to note". Do not mention these rules or include a word count.`;
 
 export const runtime = "edge";

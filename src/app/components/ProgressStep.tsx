@@ -69,7 +69,7 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
         const CONCURRENCY = data.count || (state.provider === "mistral" ? 13 : 20);
         let nextIndex = 0;
 
-        const processOne = async (jobIndex: number, attempt = 1) => {
+        const processOne = async (jobIndex: number, workerIndex: number, attempt = 1) => {
           if (cancelledRef.current) return;
           const job = newJobs[jobIndex];
 
@@ -88,7 +88,7 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
             language: state.language,
             outputFormat: state.outputFormat,
             provider: state.provider,
-            jobIndex: jobIndex,
+            workerIndex: workerIndex,
           }),
         });
 
@@ -125,22 +125,22 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
         if (attempt < 3 && !cancelledRef.current) {
           // Retry logic with backoff
           await new Promise(res => setTimeout(res, attempt * 2000));
-          return processOne(jobIndex, attempt + 1);
+          return processOne(jobIndex, workerIndex, attempt + 1);
         }
         setJobs((prev) => prev.map((j) => j.id === job.id ? { ...j, status: "error", error: err.message } : j));
         dispatch({ type: "UPDATE_JOB", payload: { id: job.id, status: "error", error: err.message } });
       }
     };
 
-    const runQueue = async () => {
-      const workers = Array.from({ length: CONCURRENCY }, async () => {
-        while (true) {
-          const idx = nextIndex++;
-          if (idx >= newJobs.length || cancelledRef.current) break;
-          await processOne(idx);
-        }
-      });
-      await Promise.all(workers);
+        const runQueue = async () => {
+          const workers = Array.from({ length: CONCURRENCY }, async (_, workerIndex) => {
+            while (true) {
+              const idx = nextIndex++;
+              if (idx >= newJobs.length || cancelledRef.current) break;
+              await processOne(idx, workerIndex);
+            }
+          });
+          await Promise.all(workers);
       if (!cancelledRef.current) setIsDone(true);
     };
 

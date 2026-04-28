@@ -61,11 +61,11 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
       payload: newJobs.map((j, i) => ({ id: j.id, titleIndex: i, promptIndex: j.promptIndex, status: "queued" })),
     });
 
-    // Process with client-side concurrency (20 parallel threads)
-    const CONCURRENCY = 20;
+    // Process with client-side concurrency (lower for Mistral to avoid rate limits)
+    const CONCURRENCY = state.provider === "mistral" ? 3 : 20;
     let nextIndex = 0;
 
-    const processOne = async (jobIndex: number) => {
+    const processOne = async (jobIndex: number, attempt = 1) => {
       if (cancelledRef.current) return;
       const job = newJobs[jobIndex];
 
@@ -117,6 +117,11 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
           payload: { id: job.id, title: job.title, keyword: job.keyword, promptUsed: state.prompts[job.promptIndex].split(":")[0], content: fullContent, generatedAt: Date.now() },
         });
       } catch (err: any) {
+        if (attempt < 3 && !cancelledRef.current) {
+          // Retry logic with backoff
+          await new Promise(res => setTimeout(res, attempt * 2000));
+          return processOne(jobIndex, attempt + 1);
+        }
         setJobs((prev) => prev.map((j) => j.id === job.id ? { ...j, status: "error", error: err.message } : j));
         dispatch({ type: "UPDATE_JOB", payload: { id: job.id, status: "error", error: err.message } });
       }

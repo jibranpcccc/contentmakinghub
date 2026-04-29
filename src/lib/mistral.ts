@@ -40,38 +40,48 @@ export async function callMistral(
     throw new Error("No MISTRAL_API_KEY found in environment variables.");
   }
 
-  const apiKey = keys[Math.floor(Math.random() * keys.length)];
+  const shuffledKeys = [...keys].sort(() => Math.random() - 0.5);
+  let lastError: Error | null = null;
 
-  const payload = {
-    model: options.model || "mistral-large-latest",
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userMessage },
-    ],
-    temperature: options.temperature ?? 0.65,
-    max_tokens: options.max_tokens ?? 1000,
-    ... (options.response_format ? { response_format: options.response_format } : {}),
-  };
+  for (const apiKey of shuffledKeys) {
+    try {
+      const payload = {
+        model: options.model || "mistral-large-latest",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage },
+        ],
+        temperature: options.temperature ?? 0.65,
+        max_tokens: options.max_tokens ?? 1000,
+        ... (options.response_format ? { response_format: options.response_format } : {}),
+      };
 
-  const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(payload),
-  });
+      const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => null);
-    throw new Error(`Mistral API error: ${response.status} ${response.statusText} ${errorData ? JSON.stringify(errorData) : ""}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(`Mistral API error: ${response.status} ${response.statusText} ${errorData ? JSON.stringify(errorData) : ""}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.choices || data.choices.length === 0) {
+        throw new Error("No choices returned from Mistral API.");
+      }
+
+      return data.choices[0].message.content;
+    } catch (err: any) {
+      lastError = err;
+      console.error(`Key ending in ${apiKey.slice(-4)} failed: ${err.message}`);
+    }
   }
 
-  const data = await response.json();
-  
-  if (!data.choices || data.choices.length === 0) {
-    throw new Error("No choices returned from Mistral API.");
-  }
-
-  return data.choices[0].message.content;
+  throw lastError || new Error("All Mistral keys failed.");
 }

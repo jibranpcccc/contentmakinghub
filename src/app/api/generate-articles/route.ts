@@ -45,10 +45,7 @@ export async function POST(req: Request) {
     
     const keys = rawKeys.filter(k => k && k !== "your_mistral_api_key_here") as string[];
     
-    const safeIndex = typeof workerIndex === "number" ? workerIndex : Math.floor(Math.random() * keys.length);
-    const apiKey = keys.length > 0 ? keys[safeIndex % keys.length] : undefined;
-    
-    if (!apiKey) return NextResponse.json({ error: "Missing API Key for Mistral" }, { status: 500 });
+    if (keys.length === 0) return NextResponse.json({ error: "Missing API Key for Mistral" }, { status: 500 });
 
     // Build format instruction based on user selection
     let formatRule = "";
@@ -88,16 +85,32 @@ export async function POST(req: Request) {
 
     const apiUrl = "https://api.mistral.ai/v1/chat/completions";
 
-    const dsResponse = await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify(payload),
-    });
+    let dsResponse;
+    let usedKey;
+    let lastErrorMsg = "";
+    let currentKeyIndex = typeof workerIndex === "number" ? workerIndex : Math.floor(Math.random() * keys.length);
+    const maxRetries = 3;
 
-    if (!dsResponse.ok) {
-      const errTxt = await dsResponse.text();
-      console.error(`[Mistral API Error] Status: ${dsResponse.status} | Text: ${errTxt} | Key: ...${apiKey?.slice(-4)} | WorkerIndex: ${workerIndex}`);
-      return NextResponse.json({ error: `Mistral Error: ${dsResponse.status}` }, { status: 502 });
+    for (let i = 0; i < maxRetries; i++) {
+      usedKey = keys[currentKeyIndex % keys.length];
+      
+      dsResponse = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${usedKey}` },
+        body: JSON.stringify(payload),
+      });
+
+      if (dsResponse.ok) {
+        break;
+      } else {
+        lastErrorMsg = await dsResponse.text();
+        console.error(`[Mistral API Error] Status: ${dsResponse.status} | Key: ...${usedKey?.slice(-4)} | WorkerIndex: ${workerIndex}`);
+        currentKeyIndex++; // Try the next key on failure
+      }
+    }
+
+    if (!dsResponse || !dsResponse.ok) {
+      return NextResponse.json({ error: `Mistral Error: ${dsResponse?.status} - ${lastErrorMsg}` }, { status: 502 });
     }
 
     const encoder = new TextEncoder();

@@ -37,7 +37,7 @@ Rules:
     const content = await callMistral(
       systemPrompt,
       `Keyword: "${keyword}" — generate exactly ${num} titles in ${lang}. Return JSON object {"titles": [...]}.`,
-      { temperature: 0.9, max_tokens: 4000, response_format: { type: "json_object" } }
+      { temperature: 0.9, max_tokens: 1500, response_format: { type: "json_object" } }
     );
 
     let titles: string[] = [];

@@ -4,106 +4,47 @@ import React, { createContext, useContext, useReducer, ReactNode } from "react";
 import { AppState, AppAction } from "@/lib/types";
 
 const defaultPrompts = [
-  "Comprehensive Guide: Act as a senior industry expert. Write an authoritative, comprehensive guide on [topic]. Structure the article with a compelling hook, a deep explanation of core concepts, why it matters in today's landscape, and a step-by-step implementation section. Use NLP entities naturally. Aim for zero fluff.",
+  "Comprehensive Guide: Act as a senior expert in [topic]. Write an authoritative, comprehensive guide that covers the core concepts, why it matters right now, and a practical step-by-step section. Hook the reader immediately. Use NLP-rich language naturally. Zero fluff — every sentence must earn its place.",
 
-  "Step-by-Step How-To: Act as an experienced instructor. Write a highly actionable, numbered step-by-step tutorial on [topic]. Start by explicitly stating the end goal the reader will achieve. For each step, provide a bold heading, the 'why', the exact 'how', and common pitfalls to avoid. Use transitional words to ensure flow.",
+  "Beginner's Explainer: Act as a patient mentor introducing [topic] to someone with zero prior knowledge. Break down every term in plain language. Use everyday analogies to make complex ideas click. Walk the reader through exactly what they need to know to get started, and end with clear immediate next steps.",
 
-  "Top 10 Listicle: Act as a meticulous curator. Write a highly engaging 'Top 10' listicle about [topic]. Each item must feature a bold, benefit-driven heading, a detailed 3-4 sentence explanation, and one highly specific real-world example, tool, or actionable tip. Conclude with a synthesis of the top picks.",
+  "Tactical Strategy Guide: Act as a seasoned practitioner who has spent years mastering [topic]. Write a tactical, no-nonsense guide focused on real strategies that work. Skip the theory — go straight to specific techniques, decision rules, and thresholds the reader can apply immediately. Use concrete numbers and examples.",
 
-  "Beginner's Guide: Act as a patient, empathetic mentor. Write a beginner-friendly guide to [topic] that assumes absolutely zero prior knowledge. Break down complex jargon into simple terms, use highly relatable everyday analogies, and gently walk the reader through foundational concepts. End with immediate next steps.",
+  "Top X Roundup: Act as a meticulous expert curator in [topic]. Write a compelling 'Top X' roundup. Each entry needs: a bold benefit-driven heading, 2-3 sentences on what makes it stand out, who it's best for, and one specific detail that separates it from the rest. End with a clear overall winner summary.",
 
-  "Expert Deep-Dive: Act as a thought leader writing for industry peers. Write an advanced, technical deep-dive into [topic]. Completely skip the basic definitions. Focus exclusively on nuanced strategies, edge cases, advanced frameworks, and high-level theoretical applications. Ensure a sophisticated, academic yet readable tone.",
+  "Myths & Misconceptions Busted: Act as a critical analyst in [topic]. Identify 5 widely-believed myths that are leading people to make bad decisions. For each: state the myth exactly as people believe it, explain precisely why it's wrong using logic and evidence, and give the corrected truth they should act on instead.",
 
-  "Myths Debunked: Act as a critical investigative journalist. Debunk 5 pervasive, common myths surrounding [topic]. For each myth: explicitly state the misconception, explore the psychological or historical reason people believe it, and ruthlessly dismantle it using logic, hypothetical data, and expert reasoning.",
+  "How It Actually Works: Act as an expert explaining the real mechanics behind [topic] to a curious, intelligent reader. Break down the technical reality in clear, relatable terms. Use strong analogies. Make the reader feel like they've been given insider knowledge they can't get anywhere else.",
 
-  "Case Study: Act as a business analyst. Write a compelling, realistic case study article regarding [topic]. Create a detailed avatar facing a massive challenge, outline the specific strategies they implemented, and highlight the numerical or qualitative results achieved. Extract 3 universal takeaways for the reader.",
+  "Comparison Article: Act as an opinionated, independent analyst. Compare [topic] head-to-head against its main alternative. Evaluate both on 4-5 specific criteria. Be direct about which is better and for whom. Never sit on the fence — give a definitive recommendation at the end.",
 
-  "Comparison Article: Act as an unbiased, objective reviewer. Write a definitive, side-by-side comparison of the two leading approaches to [topic]. Evaluate them on 4 key criteria (e.g., cost, time, complexity, scalability). Weigh the pros and cons meticulously, and conclude by declaring a definitive winner for specific use cases.",
+  "Problem & Solution: Act as a consultant who deeply understands the reader's biggest pain point with [topic]. Open by making the reader feel completely understood — name the exact frustration. Then pivot to a structured, step-by-step solution they can execute immediately. Make it feel like personalized advice.",
 
-  "Problem-Solution: Act as a seasoned consultant. Identify the single biggest, most painful problem people face regarding [topic] and provide a surgical solution. Spend the first third of the article deeply agitating the problem to build empathy, then pivot to a structured, highly actionable framework to fix it permanently.",
+  "Common Mistakes to Avoid: Act as a blunt, experienced coach. Expose 5-7 mistakes people consistently make with [topic]. For each mistake: paint a vivid scenario of it happening, explain the real cost of making it, and give the exact fix. Be harsh but fair — the reader's time and money are at stake.",
 
-  "Lessons Learned: Act as a veteran who has 'been there, done that'. Document 5 hard-won, painful lessons you've learned about [topic]. For each lesson, vividly describe the mistake that was made, the financial or emotional cost of that mistake, and the precise rule the reader should adopt to avoid it.",
+  "FAQ Article: Act as a knowledgeable expert who has answered thousands of questions about [topic]. Write a structured FAQ answering the 7 most searched, most important questions. Use the exact question as the H2 heading. Answers must be direct (2-4 sentences) followed by a short deeper explanation. No padding.",
 
-  "Trends & Predictions: Act as a futurist and industry analyst. Analyze the current trajectory of [topic] and forecast its future over the next 3-5 years. Detail 4-5 emerging micro-trends, explain the driving forces behind them, and end with one bold, contrarian prediction that most people would disagree with.",
+  "Ultimate Checklist: Act as an operational expert in [topic]. Build a practical, detailed checklist article that a reader can follow step-by-step. Organize it into clear phases (e.g., Before, During, After). Each item needs a bold heading and 2-3 sentences explaining why skipping it is a costly mistake.",
 
-  "Ultimate Checklist: Act as an operational manager. Formulate the ultimate, highly-detailed checklist article for [topic]. Organize the checklist chronologically (e.g., Before, During, After). For every single item, provide a bold heading and a concise, urgent rationale explaining the catastrophic risk of skipping it.",
+  "Industry Insider Secrets: Act as a whistleblower pulling back the curtain on [topic]. Share 5 things that industry insiders know but rarely say publicly. Each secret must be genuinely actionable — something that changes how the reader approaches [topic] once they know it. Stick to verifiable logic, no conspiracy theories.",
 
-  "FAQ Article: Act as a customer success manager. Compile and answer the 7 most critical, frequently asked questions about [topic]. Use exact-match question phrasing for H2 headings. Provide direct, no-nonsense answers followed by a deeper explanation, ensuring the entire article flows cohesively rather than disjointedly.",
+  "Story-Driven Article: Act as a master storyteller. Open with a gripping, real-feeling narrative scenario involving [topic]. Use the story to illustrate a key insight or strategy. Then smoothly transition into 3 concrete, standalone takeaways the reader can apply immediately.",
 
-  "Resource Guide: Act as a master librarian. Write a highly curated resource and tool guide for mastering [topic]. For each recommended resource, provide the name, a compelling 2-sentence review, specifically who it is best suited for, and the single standout feature that elevates it above the competition.",
+  "Data-Driven Breakdown: Act as an analytical expert in [topic]. Build your article around specific statistics, percentages, and measurable insights. Don't just list numbers — contextualize every data point into a practical conclusion the reader can act on. Give the article the authority of research without the dryness.",
 
-  "Opinion Editorial: Act as a passionate industry disruptor. Write a fiery, opinion-driven editorial about [topic]. Take a clear, polarizing stance entirely avoiding neutral ground. Support your thesis with 3 ironclad arguments and vivid examples. Briefly acknowledge the opposing viewpoint before systematically destroying it.",
+  "Pros & Cons Deep-Dive: Act as a pragmatic, unbiased analyst. Write a thorough pros and cons breakdown of [topic]. Cover exactly 5 pros and 5 cons. Each point gets a bold heading and a rich, nuanced explanation — not a bullet point. End with a 'Bottom Line' section that helps the reader make a final decision.",
 
-  "Behind the Scenes: Act as an insider pulling back the curtain. Write a raw, behind-the-scenes exposé about [topic]. Highlight the grueling realities, the hidden workflows, and the insider details that the general public is completely oblivious to. Use narrative storytelling to make it immersive.",
+  "Beginner to Advanced Roadmap: Act as a mentor mapping the full journey in [topic]. Define 4 clear stages: Starter, Intermediate, Advanced, Expert. For each stage: list the specific skills to build, the traps that derail people at that level, and the clear milestone that signals it's time to level up.",
 
-  "Mistakes to Avoid: Act as a risk management expert. Detail the 7 most catastrophic, progress-killing mistakes people make with [topic]. For each entry: describe the mistake vividly, explain the compound negative consequences it creates, and provide the exact, step-by-step corrective protocol.",
+  "Quick-Start Action Guide: Act as a results-obsessed coach. Write a blazing-fast guide to getting started with [topic] in the shortest time possible. Strip all theory. Use numbered steps, short punchy sentences, and direct commands only. Every line should push the reader toward immediate action.",
 
-  "Success Roadmap: Act as a strategic lifecycle coach. Architect a complete, linear success roadmap for [topic] broken into 5 distinct phases. For each phase, provide a clear heading, the primary objective, the most critical action to take, and the specific milestone that signals it's time to move to the next phase.",
+  "Honest Review: Act as a rigorous, unbiased critic. Write a brutally honest review of [topic]. Structure: executive summary, 4+ genuine benefits, 3+ real drawbacks or limitations, who it's genuinely right for, who should walk away, and a final unvarnished verdict. No promotional tone whatsoever.",
 
-  "Quick-Start Guide: Act as a tactical executioner. Write a blazing-fast, 'get-started-in-15-minutes' guide for [topic]. Strip away absolutely all theory, background, and fluff. Rely exclusively on numbered steps, short punchy sentences, and direct commands. Optimize for immediate human action.",
+  "Rapid-Fire Tips: Act as a rapid-fire expert consultant in [topic]. Deliver 12-15 hyper-specific, actionable tips. Each tip: one bold sentence headline, then maximum 2 sentences of how-to detail. Group tips into 3 thematic H2 sections. Zero generic advice — every tip must be specific enough to be immediately useful.",
 
-  "Data-Driven Article: Act as a rigorous data scientist. Write a heavily analytical article about [topic]. Organically weave plausible statistics, percentages, and metrics into the narrative to build unshakeable authority. Ensure the numbers aren't just listed, but contextualized into actionable business insights.",
-
-  "Interview Style: Act as a veteran podcaster. Write a highly engaging, simulated Q&A interview article about [topic] featuring a fictional, world-renowned expert. Craft 8 piercing, unconventional questions. Ensure the expert's answers are profound, quotable, heavily detailed, and packed with unique mental models.",
-
-  "Story-Driven Article: Act as a master storyteller. Open with a gripping, emotionally resonant narrative about a specific scenario involving [topic]. Use the story as an anchor to illustrate a broader, fundamental principle. Seamlessly transition from the narrative into 3 highly practical, standalone takeaways.",
-
-  "Contrarian Take: Act as an intellectual rebel. Identify the most universally accepted piece of 'best practice' advice regarding [topic], and fiercely argue against it. Challenge conventional wisdom using first-principles logic and historical examples. Offer a completely alternative framework that yields better results.",
-
-  "Pillar Content: Act as the definitive encyclopedia on the subject. Write a massive, foundational pillar article about [topic]. Cover the absolute breadth and depth of the subject so comprehensively that the reader will bookmark it and never need to consult another source. Use rich semantic structuring.",
-
-  "Timely Angle: Act as a breaking news analyst. Connect [topic] to massive, current societal or economic trends. Explain with urgency why this topic matters right this very second more than ever before. Provide 4-5 actionable strategies the reader must implement today to capitalize on the moment.",
-
-  "Honest Review: Act as a scrupulous, unbiased critic. Write a brutally honest, balanced review of [topic]. Structure the article perfectly: An executive overview, 4+ massive benefits, 3+ glaring flaws or limitations, exactly who this is for, exactly who should run away from it, and a final, unvarnished verdict.",
-
-  "Historical Evolution: Act as an industry historian. Trace the fascinating evolution of [topic] from its earliest, primitive origins to its current modern state. Detail 3-4 massive paradigm shifts or turning points. Conclude by extrapolating this historical data to predict where things are heading next.",
-
-  "Rapid-Fire Tips: Act as a rapid-fire consultant. Deliver 15 hyper-specific, actionable tips about [topic]. Do not waste words. Each tip must be exactly one bold sentence followed by a maximum of two sentences explaining the execution detail. Group these tips into 3 distinct, thematic H2 sections.",
-
-  "Framework Article: Act as a management consultant (think McKinsey or Bain). Introduce a proprietary, completely original conceptual framework for mastering [topic]. Give the framework a catchy, memorable acronym. Dedicate an H2 to deeply dissecting each component of the framework, and show it applied to a real scenario.",
-
-  "Pros and Cons: Act as a pragmatic decision-maker. Write an exhaustively balanced pros and cons analysis of [topic]. Detail exactly 5 pros and 5 cons. Each point must have a bold heading and a rich, nuanced explanation. Conclude with a 'Bottom Line' section that helps the reader make a final choice.",
-
-  "What-If Scenarios: Act as a scenario planner. Deeply explore 3 radical 'what-if' scenarios concerning [topic] (e.g., what if the market crashes, what if technology automates it). Analyze the cascading outcomes and second-order effects of each. Extract survival and optimization insights from all three.",
-
-  "Troubleshooting Guide: Act as a senior technical support engineer. Identify the 6 most frustrating, common bottlenecks or failures encountered with [topic]. Formulate the guide as a triage manual: clearly state the symptom, rapidly diagnose the likely root cause, and provide an infallible, step-by-step remediation plan.",
-
-  "Key Terms Explained: Act as a lexicographer. Demystify and explain the 10 most important, misunderstood jargon terms within [topic]. Format each entry precisely: an incredibly plain-English definition, a relatable real-world analogy, and a brief note on why misunderstanding this term will cost the reader dearly.",
-
-  "Day in the Life: Act as a documentary filmmaker. Write a vivid, hour-by-hour 'day in the life' narrative of a professional intensely engaged with [topic]. Walk through their morning routines, afternoon crises, and evening wrap-ups. Inject highly specific sensory details and micro-decisions to make it authentic.",
-
-  "Cost Breakdown: Act as a forensic accountant. Write a ruthless, transparent cost breakdown for executing [topic]. Uncover the hidden, sneaky costs that blindside beginners, alongside the obvious ones. Categorize the expenses, provide aggressive money-saving hacks, and end with realistic budget tiers (Low/Med/High).",
-
-  "Rookie Mistakes: Act as a harsh but fair coach. Expose 5 classic, embarrassing 'rookie mistakes' people consistently make when starting with [topic]. For each mistake, paint a brief, cringe-worthy scenario of it happening, explain the psychological bias that causes it, and provide the exact mechanical fix.",
-
-  "Industry Secrets: Act as a whistleblower. Reveal 5 highly guarded, lucrative insider secrets about [topic] that the top 1% of the industry uses but hides from the public. Use bold headings. Explain the mechanism of the secret in deep detail, and provide a roadmap for the reader to ethically exploit this knowledge.",
-
-  "Detailed Walkthrough: Act as an over-the-shoulder guide. Write an excruciatingly detailed, microscopic walkthrough of the hardest process in [topic]. Number every single micro-step. Do not skip assumptions. Insert highlighted 'Pro Tips' between difficult steps to ensure the reader does not get stuck.",
-
-  "Research Summary: Act as an academic translator. Synthesize the latest, cutting-edge theories and research regarding [topic] for a mainstream audience. Strip away the dense academic jargon without losing the profound insights. Translate these complex theoretical findings into highly practical, daily advice.",
-
-  "Actionable Strategies: Act as a growth hacker. Present 5 unconventional, high-impact strategies for mastering [topic]. Structure each perfectly: An H2 heading, the psychological or economic reason why the strategy boasts massive leverage, and a hyper-specific 'Do This Today' execution command.",
-
-  "Mini Case Studies: Act as an aggregator of success. Feature 3 rapid-fire, highly condensed mini case studies about [topic]. Keep each to roughly 150 words: clearly define the initial challenge, the unconventional approach taken, and the quantified result. Dedicate the final section to connecting the common patterns among all three.",
-
-  "AMA Style: Act as a brutally honest guru hosting an Ask Me Anything. Answer 6 highly specific, difficult, real-world questions about [topic]. Completely avoid generic, softball questions. Deliver answers that are thorough, slightly edgy, intensely practical, and devoid of any corporate speak.",
-
-  "Hot Take: Act as a provocateur. Drop a massive, highly controversial 'hot take' regarding [topic]. State your polarizing thesis in the very first sentence. Build an absolutely airtight, logically sound case supported by historical and empirical evidence. Anticipate the hatred, acknowledge the counterarguments, and refute them.",
-
-  "Inspirational Guide: Act as a motivational speaker who also delivers extreme value. Write an emotionally uplifting article about [topic] that permanently shifts the reader's paradigm. Open with a visceral story of struggle and eventual triumph. Extract 4 unbreakable philosophical principles from the story to guide the reader.",
-
-  "Technical Breakdown: Act as an elite reverse-engineer. Completely dissect how the mechanics of [topic] work under the hood. Use incredibly lucid, clear analogies to map complex systems to everyday objects. Ensure the reader experiences a massive 'aha' moment and feels exponentially smarter after reading.",
-
-  "Buyer's Guide: Act as an uncompromising consumer advocate. Write the ultimate buyer's defense guide for [topic]. Unpack exactly what features to demand, the gimmicks to completely ignore, aggressive budgeting negotiation tactics, massive red flags that signal a scam, and definitive 'Best For [X]' recommendations.",
-
-  "Productivity Hacks: Act as an efficiency obsessive. Share 8 ruthless, time-saving, completely uncommon productivity hacks for dominating [topic]. Use bold headings and extremely dense, 3-sentence implementation details. Completely ignore trite advice like 'wake up early'—focus exclusively on high-leverage workflow hacks.",
-
-  "Beginner to Pro Roadmap: Act as an RPG game designer. Map the complete progression skill-tree for moving from absolute novice to world-class expert in [topic]. Define 4 distinct stages: Novice, Intermediate, Advanced, Elite. Explicitly list the specific skills to master, the traps to avoid, and the exact milestone required to 'level up'.",
-
-  "Science Behind: Act as an evolutionary biologist. Deeply explain the invisible science, neurology, or core physics behind *why* [topic] behaves the way it does. Reference fundamental principles. Structure it beautifully: The Core Phenomenon, The Invisible Science Driving It, and What This Means For Your Daily Execution.",
-
-  "Complete Playbook: Act as an elite military strategist. Write the ultimate, uncompromising execution playbook for [topic]. Divide it into 3 phases: Recon & Preparation, The Execution Strike, and Post-Action Optimization. Provide exactly 3 devastatingly effective tactics per phase. End with a strict 7-day action manifesto."
+  "Complete Playbook: Act as an elite strategist in [topic]. Write a complete execution playbook divided into 3 phases: Preparation, Execution, and Optimization. Provide 3 specific, high-leverage tactics per phase. Close with a concrete 7-day action plan the reader can start today.",
 ];
+
 
 const initialState: AppState = {
   provider: "mistral",
@@ -111,7 +52,7 @@ const initialState: AppState = {
   outputFormat: "markdown",
   keywords: [],
   prompts: defaultPrompts,
-  selectedPromptIndices: Array.from({ length: 50 }, (_, i) => i),
+  selectedPromptIndices: Array.from({ length: 20 }, (_, i) => i),
   totalArticles: 10,
   generatedTitles: [],
   generationJobs: [],

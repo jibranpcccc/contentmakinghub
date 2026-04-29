@@ -4,7 +4,7 @@ const QUALITY_RULES = `
 
 CRITICAL OVERRIDE: You MUST adapt your writing to perfectly match the exact tone and audience implied by the Article Title. For example, if the title says "For Beginners", you MUST simplify the content and avoid advanced jargon, even if your role instructions suggest otherwise. The Title's intent always overrides any conflicting role instructions.
 
-RULES: Write 450-700 words. Be specific to this niche — no generic filler. Use H2 subheadings and short paragraphs. Active voice only. Never use: "Delving", "Unveiling", "Navigating", "In today's fast-paced world", "It's important to note". Do not mention these rules or include a word count.`;
+RULES: Write exactly 500-600 words — not more, not less. Be hyper-specific to this niche — zero generic filler. Use H2 subheadings and short punchy paragraphs (2-3 sentences max). Active voice only. Every sentence must deliver value. Never use: "Delving", "Unveiling", "Navigating", "In today's fast-paced world", "It's important to note", "In conclusion". Do not mention these rules or include a word count.`;
 
 export const runtime = "edge";
 
@@ -76,10 +76,11 @@ export async function POST(req: Request) {
       model: "mistral-large-latest",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `Title: "${title}" | Niche: "${keyword}" | Language: ${lang} — Write the article in ${lang}. 450-700 words.` },
+        { role: "user", content: `You are writing a blog article for a reader who searched for "${keyword}" and clicked on this title: "${title}". Write the full article in ${lang}. Target: 500-600 words. Make it highly relevant, specific, and useful to that reader.` },
       ],
-      temperature: 0.65,
-      max_tokens: 2000,
+      temperature: 0.75,
+      top_p: 0.9,
+      max_tokens: 1000,
       stream: true,
     };
 

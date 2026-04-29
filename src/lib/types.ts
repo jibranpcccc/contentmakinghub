@@ -2,7 +2,7 @@ export type JobStatus = "queued" | "running" | "done" | "error";
 
 export type OutputFormat = "markdown" | "plain" | "html" | "bbcode" | "wiki";
 
-export type Provider = "deepseek" | "mistral";
+export type Provider = "mistral";
 
 export interface Job {
   id: string;

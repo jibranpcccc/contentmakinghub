@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { callDeepSeek } from "@/lib/deepseek";
 import { callMistral } from "@/lib/mistral";
-
 function extractJSON(text: string): any {
   let clean = text.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
   try { return JSON.parse(clean); } catch {}
@@ -36,20 +34,11 @@ Rules:
 - BANNED: Exploring, Delving, Unveiling, Navigating, Demystifying.
 - Return ONLY a JSON object with a single key "titles" containing an array of strings. No other text.`;
 
-    let content: string;
-    if (provider === "mistral") {
-      content = await callMistral(
-        systemPrompt,
-        `Keyword: "${keyword}" — generate exactly ${num} titles in ${lang}. Return JSON object {"titles": [...]}.`,
-        { temperature: 0.9, max_tokens: 4000, response_format: { type: "json_object" } }
-      );
-    } else {
-      content = await callDeepSeek(
-        systemPrompt,
-        `Keyword: "${keyword}" — generate exactly ${num} titles in ${lang}. Return JSON object {"titles": [...]}.`,
-        { temperature: 0.9, max_tokens: 4000, response_format: { type: "json_object" } }
-      );
-    }
+    const content = await callMistral(
+      systemPrompt,
+      `Keyword: "${keyword}" — generate exactly ${num} titles in ${lang}. Return JSON object {"titles": [...]}.`,
+      { temperature: 0.9, max_tokens: 4000, response_format: { type: "json_object" } }
+    );
 
     let titles: string[] = [];
     const parsed = extractJSON(content);

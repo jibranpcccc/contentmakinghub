@@ -19,22 +19,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing title, keyword, or prompt" }, { status: 400 });
     }
 
-    const isMistral = provider === "mistral";
+    const keys = Object.keys(process.env)
+      .filter(k => k.startsWith("MISTRAL_API_KEY"))
+      .map(k => process.env[k])
+      .filter(k => k && k !== "your_mistral_api_key_here") as string[];
     
-    let apiKey: string | undefined;
-    if (isMistral) {
-      const keys = Object.keys(process.env)
-        .filter(k => k.startsWith("MISTRAL_API_KEY"))
-        .map(k => process.env[k])
-        .filter(k => k && k !== "your_mistral_api_key_here") as string[];
-      
-      const safeIndex = typeof workerIndex === "number" ? workerIndex : Math.floor(Math.random() * keys.length);
-      apiKey = keys.length > 0 ? keys[safeIndex % keys.length] : undefined;
-    } else {
-      apiKey = process.env.DEEPSEEK_API_KEY;
-    }
+    const safeIndex = typeof workerIndex === "number" ? workerIndex : Math.floor(Math.random() * keys.length);
+    const apiKey = keys.length > 0 ? keys[safeIndex % keys.length] : undefined;
     
-    if (!apiKey) return NextResponse.json({ error: `Missing API Key for ${provider || "deepseek"}` }, { status: 500 });
+    if (!apiKey) return NextResponse.json({ error: "Missing API Key for Mistral" }, { status: 500 });
 
     // Build format instruction based on user selection
     let formatRule = "";
@@ -62,7 +55,7 @@ export async function POST(req: Request) {
       .replace(/\[keyword\]/gi, keyword) + QUALITY_RULES + formatRule + `\nLANGUAGE: Write the ENTIRE article in ${lang}. Every word must be in ${lang}.`;
 
     const payload = {
-      model: isMistral ? "mistral-large-latest" : "deepseek-chat",
+      model: "mistral-large-latest",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `Title: "${title}" | Niche: "${keyword}" | Language: ${lang} — Write the article in ${lang}. 450-700 words.` },
@@ -72,7 +65,7 @@ export async function POST(req: Request) {
       stream: true,
     };
 
-    const apiUrl = isMistral ? "https://api.mistral.ai/v1/chat/completions" : "https://api.deepseek.com/v1/chat/completions";
+    const apiUrl = "https://api.mistral.ai/v1/chat/completions";
 
     const dsResponse = await fetch(apiUrl, {
       method: "POST",
@@ -83,7 +76,7 @@ export async function POST(req: Request) {
     if (!dsResponse.ok) {
       const errTxt = await dsResponse.text();
       console.error(`[Mistral API Error] Status: ${dsResponse.status} | Text: ${errTxt} | Key: ...${apiKey?.slice(-4)} | WorkerIndex: ${workerIndex}`);
-      return NextResponse.json({ error: `${isMistral ? "Mistral" : "DeepSeek"} Error: ${dsResponse.status}` }, { status: 502 });
+      return NextResponse.json({ error: `Mistral Error: ${dsResponse.status}` }, { status: 502 });
     }
 
     const encoder = new TextEncoder();

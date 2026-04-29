@@ -11,7 +11,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Bulk Content Generator",
-  description: "Generate bulk articles using DeepSeek API",
+  description: "Generate bulk articles using Mistral API",
 };
 
 export default function RootLayout({

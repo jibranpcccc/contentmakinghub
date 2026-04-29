@@ -37,7 +37,7 @@ export default function Home() {
           Bulk Content Generator
         </h1>
         <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: "0.25rem" }}>
-          Multi-keyword • 20 parallel threads • DeepSeek API
+          Multi-keyword • 20 parallel threads • Mistral API
         </p>
       </header>
 

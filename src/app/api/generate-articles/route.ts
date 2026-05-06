@@ -74,9 +74,9 @@ export async function POST(req: Request) {
 
     if (targetWordCount && targetWordCount !== "default") {
       const targetInt = parseInt(targetWordCount);
-      wordRule = `CRITICAL LENGTH INSTRUCTION: You MUST write exactly ${targetInt} to ${targetInt + 50} words. This is a hard requirement. If you are generating a list (like "Top 5" or "10 Tips"), you MUST expand the detail for each item significantly to ensure you reach the ${targetInt} word minimum. Do not stop early. Do not write a conclusion until you have exceeded ${targetInt} words.`;
-      userWordRule = `Target: strictly ${targetInt}-${targetInt + 50} words. You must hit this length. Never cut off mid-sentence.`;
-      calcMaxTokens = 8000;
+      wordRule = `CRITICAL LENGTH INSTRUCTION: Write approximately ${targetInt} words. Ensure your article is sufficiently detailed to reach this length, but conclude naturally once the topic is thoroughly covered. Do not cut off mid-sentence.`;
+      userWordRule = `Target: ~${targetInt} words. Ensure the full article is finished and not truncated.`;
+      calcMaxTokens = Math.max(1000, Math.ceil(targetInt * 2.5)); // 2.5 tokens per word is a generous upper bound for Mistral
     }
 
     const systemPrompt = prompt

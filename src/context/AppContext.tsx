@@ -57,6 +57,7 @@ const initialState: AppState = {
   generatedTitles: [],
   generationJobs: [],
   articles: [],
+  targetWordCount: "default",
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -105,6 +106,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       };
     case "ADD_ARTICLE":
       return { ...state, articles: [...state.articles, action.payload] };
+    case "SET_TARGET_WORD_COUNT":
+      return { ...state, targetWordCount: action.payload };
     case "RESET_BATCH":
       return {
         ...state,

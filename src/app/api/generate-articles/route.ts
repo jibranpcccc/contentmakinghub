@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
 
-const QUALITY_RULES = `
+const BASE_QUALITY_RULES = `
 
 CRITICAL OVERRIDE: You MUST adapt your writing to perfectly match the exact tone and audience implied by the Article Title. For example, if the title says "For Beginners", you MUST simplify the content and avoid advanced jargon, even if your role instructions suggest otherwise. The Title's intent always overrides any conflicting role instructions.
 
-RULES: Write exactly 500-600 words — not more, not less. Be hyper-specific to this niche — zero generic filler. Use H2 subheadings and short punchy paragraphs (2-3 sentences max). Active voice only. Every sentence must deliver value. Never use: "Delving", "Unveiling", "Navigating", "In today's fast-paced world", "It's important to note", "In conclusion". Do not mention these rules or include a word count.`;
+RULES: Be hyper-specific to this niche — zero generic filler. Use H2 subheadings and short punchy paragraphs (2-3 sentences max). Active voice only. Every sentence must deliver value. Never use: "Delving", "Unveiling", "Navigating", "In today's fast-paced world", "It's important to note", "In conclusion". Do not mention these rules or include a word count.`;
 
 export const runtime = "edge";
 
 // Streams raw text back to the browser to ensure Netlify NEVER times out
 export async function POST(req: Request) {
   try {
-    const { title, keyword, prompt, language, outputFormat, provider, workerIndex } = await req.json();
+    const { title, keyword, prompt, language, outputFormat, provider, workerIndex, targetWordCount } = await req.json();
     const lang = language || "English";
     const fmt = outputFormat || "markdown";
 
@@ -68,19 +68,30 @@ export async function POST(req: Request) {
         break;
     }
 
+    let wordRule = "Write exactly 500-600 words — not more, not less.";
+    let userWordRule = "Target: 500-600 words.";
+    let calcMaxTokens = 1000;
+
+    if (targetWordCount && targetWordCount !== "default") {
+      const targetInt = parseInt(targetWordCount);
+      wordRule = `Write exactly ${targetInt} to ${targetInt + 50} words — not more, not less. Ensure the article is 100% complete and does not cut off or stop in the middle. Do NOT write less than ${targetInt} words.`;
+      userWordRule = `Target: ${targetInt} to ${targetInt + 50} words. Finish the full article without stopping early.`;
+      calcMaxTokens = Math.max(1000, Math.ceil(targetInt * 2));
+    }
+
     const systemPrompt = prompt
       .replace(/\[topic\]/gi, keyword)
-      .replace(/\[keyword\]/gi, keyword) + QUALITY_RULES + formatRule + `\nLANGUAGE: Write the ENTIRE article in ${lang}. Every word must be in ${lang}.`;
+      .replace(/\[keyword\]/gi, keyword) + BASE_QUALITY_RULES + `\n\nLENGTH RULES: ${wordRule}` + formatRule + `\nLANGUAGE: Write the ENTIRE article in ${lang}. Every word must be in ${lang}.`;
 
     const payload = {
       model: "mistral-large-latest",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `You are writing a blog article for a reader who searched for "${keyword}" and clicked on this title: "${title}". Write the full article in ${lang}. Target: 500-600 words. Make it highly relevant, specific, and useful to that reader.` },
+        { role: "user", content: `You are writing a blog article for a reader who searched for "${keyword}" and clicked on this title: "${title}". Write the full article in ${lang}. ${userWordRule} Make it highly relevant, specific, and useful to that reader.` },
       ],
       temperature: 0.75,
       top_p: 0.9,
-      max_tokens: 1000,
+      max_tokens: calcMaxTokens,
       stream: true,
     };
 

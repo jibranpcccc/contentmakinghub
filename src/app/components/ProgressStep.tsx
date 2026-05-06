@@ -89,6 +89,7 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
             outputFormat: state.outputFormat,
             provider: state.provider,
             workerIndex: workerIndex,
+            targetWordCount: state.targetWordCount,
           }),
         });
 

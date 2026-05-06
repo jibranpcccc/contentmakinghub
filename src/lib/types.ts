@@ -38,6 +38,7 @@ export interface AppState {
   generatedTitles: GeneratedTitle[];
   generationJobs: Job[];
   articles: Article[];
+  targetWordCount: string;
 }
 
 export type AppAction =
@@ -55,4 +56,5 @@ export type AppAction =
   | { type: "INIT_GENERATION_JOBS"; payload: Job[] }
   | { type: "UPDATE_JOB"; payload: { id: string; status: JobStatus; error?: string } }
   | { type: "ADD_ARTICLE"; payload: Article }
+  | { type: "SET_TARGET_WORD_COUNT"; payload: string }
   | { type: "RESET_BATCH" };

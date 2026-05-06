@@ -193,7 +193,19 @@ export default function InputStep({ onNext }: InputStepProps) {
             <input type="number" min={1} max={500} value={state.totalArticles}
               onChange={(e) => dispatch({ type: "SET_TOTAL_ARTICLES", payload: Math.max(1, parseInt(e.target.value) || 1) })}
               style={{ width: "160px" }} />
-            <p className="field-hint">Each article will be 450–550 words. All 50 writing styles auto-rotate.</p>
+            <p className="field-hint">Each article will be generated according to the styles auto-rotated.</p>
+          </div>
+
+          {/* Word Count Selection */}
+          <div>
+            <label className="field-label">📝 Target Word Count</label>
+            <select value={state.targetWordCount || "default"} onChange={(e) => dispatch({ type: "SET_TARGET_WORD_COUNT", payload: e.target.value })} style={{ width: "280px" }}>
+              <option value="default">Default (Determined by prompt)</option>
+              {Array.from({ length: 19 }, (_, i) => 700 + i * 100).map(count => (
+                <option key={count} value={count.toString()}>{count} Words</option>
+              ))}
+            </select>
+            <p className="field-hint">Forces the AI to write a specific length without cutting off.</p>
           </div>
 
           {/* Keywords */}

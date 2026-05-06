@@ -74,14 +74,14 @@ export async function POST(req: Request) {
 
     if (targetWordCount && targetWordCount !== "default") {
       const targetInt = parseInt(targetWordCount);
-      wordRule = `Write exactly ${targetInt} to ${targetInt + 50} words — not more, not less. Ensure the article is 100% complete and does not cut off or stop in the middle. Do NOT write less than ${targetInt} words.`;
-      userWordRule = `Target: ${targetInt} to ${targetInt + 50} words. Finish the full article without stopping early.`;
+      wordRule = `CRITICAL LENGTH CONSTRAINT: You MUST write between ${targetInt} and ${targetInt + 50} words. You will be severely penalized if you write fewer than ${targetInt} words. Do NOT stop writing until you have reached this exact length. Expand on points with detailed examples if you are falling short.`;
+      userWordRule = `Target: ${targetInt}-${targetInt + 50} words. This is a strict requirement. Do not write a conclusion until you are absolutely sure you have written at least ${targetInt} words.`;
       calcMaxTokens = Math.max(1000, Math.ceil(targetInt * 2));
     }
 
     const systemPrompt = prompt
       .replace(/\[topic\]/gi, keyword)
-      .replace(/\[keyword\]/gi, keyword) + BASE_QUALITY_RULES + `\n\nLENGTH RULES: ${wordRule}` + formatRule + `\nLANGUAGE: Write the ENTIRE article in ${lang}. Every word must be in ${lang}.`;
+      .replace(/\[keyword\]/gi, keyword) + BASE_QUALITY_RULES + `\n\n${wordRule}` + formatRule + `\nLANGUAGE: Write the ENTIRE article in ${lang}. Every word must be in ${lang}.`;
 
     const payload = {
       model: "mistral-large-latest",

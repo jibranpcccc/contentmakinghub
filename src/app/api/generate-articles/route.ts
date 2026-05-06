@@ -76,7 +76,7 @@ export async function POST(req: Request) {
       const targetInt = parseInt(targetWordCount);
       wordRule = `CRITICAL LENGTH INSTRUCTION: Write approximately ${targetInt} words. Ensure your article is sufficiently detailed to reach this length, but conclude naturally once the topic is thoroughly covered. Do not cut off mid-sentence.`;
       userWordRule = `Target: ~${targetInt} words. Ensure the full article is finished and not truncated.`;
-      calcMaxTokens = Math.max(1000, Math.ceil(targetInt * 2.5)); // 2.5 tokens per word is a generous upper bound for Mistral
+      calcMaxTokens = Math.max(2000, targetInt * 4); // Extremely generous allocation to absolutely prevent 'length' truncation
     }
 
     const systemPrompt = prompt
@@ -134,19 +134,21 @@ export async function POST(req: Request) {
           const reader = dsResponse.body?.getReader();
           if (!reader) throw new Error("No reader");
 
+          let buffer = "";
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split("\n");
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || ""; // Keep the last potentially incomplete line in the buffer
 
             for (const line of lines) {
-              if (line.startsWith("data: ") && line !== "data: [DONE]") {
+              const trimmed = line.trim();
+              if (trimmed.startsWith("data: ") && trimmed !== "data: [DONE]") {
                 try {
-                  const data = JSON.parse(line.slice(6));
+                  const data = JSON.parse(trimmed.slice(6));
                   if (data.choices?.[0]?.delta?.content) {
-                    // Send actual words directly to client stream over HTTP
                     controller.enqueue(encoder.encode(data.choices[0].delta.content));
                   }
                 } catch (e) {}

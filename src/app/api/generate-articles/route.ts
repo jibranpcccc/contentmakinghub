@@ -74,9 +74,9 @@ export async function POST(req: Request) {
 
     if (targetWordCount && targetWordCount !== "default") {
       const targetInt = parseInt(targetWordCount);
-      wordRule = `CRITICAL LENGTH CONSTRAINT: You MUST write between ${targetInt} and ${targetInt + 50} words. You will be severely penalized if you write fewer than ${targetInt} words. Do NOT stop writing until you have reached this exact length. Expand on points with detailed examples if you are falling short.`;
-      userWordRule = `Target: ${targetInt}-${targetInt + 50} words. This is a strict requirement. Do not write a conclusion until you are absolutely sure you have written at least ${targetInt} words.`;
-      calcMaxTokens = Math.max(1000, Math.ceil(targetInt * 2));
+      wordRule = `CRITICAL LENGTH INSTRUCTION: You MUST write exactly ${targetInt} to ${targetInt + 50} words. This is a hard requirement. If you are generating a list (like "Top 5" or "10 Tips"), you MUST expand the detail for each item significantly to ensure you reach the ${targetInt} word minimum. Do not stop early. Do not write a conclusion until you have exceeded ${targetInt} words.`;
+      userWordRule = `Target: strictly ${targetInt}-${targetInt + 50} words. You must hit this length. Never cut off mid-sentence.`;
+      calcMaxTokens = 8000;
     }
 
     const systemPrompt = prompt

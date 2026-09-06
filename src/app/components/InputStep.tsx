@@ -55,43 +55,45 @@ export default function InputStep({ onNext }: InputStepProps) {
     const statuses: KeywordStatus[] = keywords.map((kw) => ({ keyword: kw, status: "waiting", titles: [] }));
     setKeywordStatuses(statuses);
 
-    const allTitles: GeneratedTitle[] = [];
+    const kwTasks = keywords.map((kw, i) => ({
+      kw,
+      count: base + (i < remainder ? 1 : 0),
+    })).filter(t => t.count > 0);
 
-    // Process each keyword one by one (each call is fast, no timeout)
-    for (let i = 0; i < keywords.length; i++) {
-      const kw = keywords[i];
-      const count = base + (i < remainder ? 1 : 0);
-      if (count === 0) continue;
-
-      setKeywordStatuses((prev) => prev.map((ks) =>
-        ks.keyword === kw ? { ...ks, status: "generating" } : ks
-      ));
-
-      try {
-        const res = await fetch("/api/generate-titles", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ keyword: kw, count, language: state.language, provider: state.provider }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed");
-
-        const titles: GeneratedTitle[] = data.titles;
-        allTitles.push(...titles);
-
+    const titleResults = await Promise.all(
+      kwTasks.map(async ({ kw, count }) => {
         setKeywordStatuses((prev) => prev.map((ks) =>
-          ks.keyword === kw ? { ...ks, status: "done", titles: titles.map((t) => t.title) } : ks
+          ks.keyword === kw ? { ...ks, status: "generating" } : ks
         ));
-      } catch (err: any) {
-        // Fallback titles
-        for (let j = 0; j < count; j++) {
-          allTitles.push({ keyword: kw, title: `${kw} Guide #${j + 1}`, selected: true });
+
+        try {
+          const res = await fetch("/api/generate-titles", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ keyword: kw, count, language: state.language, provider: state.provider }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Failed");
+
+          const titles: GeneratedTitle[] = data.titles;
+          setKeywordStatuses((prev) => prev.map((ks) =>
+            ks.keyword === kw ? { ...ks, status: "done", titles: titles.map((t) => t.title) } : ks
+          ));
+          return titles;
+        } catch (err: any) {
+          const fallbackTitles: GeneratedTitle[] = [];
+          for (let j = 0; j < count; j++) {
+            fallbackTitles.push({ keyword: kw, title: `${kw} Guide #${j + 1}`, selected: true });
+          }
+          setKeywordStatuses((prev) => prev.map((ks) =>
+            ks.keyword === kw ? { ...ks, status: "error", error: err.message } : ks
+          ));
+          return fallbackTitles;
         }
-        setKeywordStatuses((prev) => prev.map((ks) =>
-          ks.keyword === kw ? { ...ks, status: "error", error: err.message } : ks
-        ));
-      }
-    }
+      })
+    );
+
+    const allTitles: GeneratedTitle[] = titleResults.flat();
 
     dispatch({ type: "SET_GENERATED_TITLES", payload: allTitles });
     setIsGenerating(false);

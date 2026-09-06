@@ -66,7 +66,7 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
       .then(res => res.json())
       .catch(() => ({ count: null }))
       .then(data => {
-        const CONCURRENCY = data.count || (state.provider === "mistral" ? 13 : 20);
+        const CONCURRENCY = Math.max(data.count || 24, 24);
         let nextIndex = 0;
 
         const processOne = async (jobIndex: number, workerIndex: number, attempt = 1) => {
@@ -135,9 +135,9 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
 
         const runQueue = async () => {
           const workers = Array.from({ length: CONCURRENCY }, async (_, workerIndex) => {
-            // Stagger Mistral startup by 500ms per thread to bypass IP burst rate limits
+            // Rapid startup (50ms per thread) to prevent thread locks while starting all 24 workers immediately
             if (state.provider === "mistral") {
-              await new Promise(res => setTimeout(res, workerIndex * 1500));
+              await new Promise(res => setTimeout(res, workerIndex * 50));
             }
             while (true) {
               const idx = nextIndex++;

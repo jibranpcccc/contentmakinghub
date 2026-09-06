@@ -4,7 +4,13 @@ const BASE_QUALITY_RULES = `
 
 CRITICAL OVERRIDE: You MUST adapt your writing to perfectly match the exact tone and audience implied by the Article Title. For example, if the title says "For Beginners", you MUST simplify the content and avoid advanced jargon, even if your role instructions suggest otherwise. The Title's intent always overrides any conflicting role instructions.
 
-RULES: Be hyper-specific to this niche — zero generic filler. Use H2 subheadings and short punchy paragraphs (2-3 sentences max). Active voice only. Every sentence must deliver value. Never use: "Delving", "Unveiling", "Navigating", "In today's fast-paced world", "It's important to note", "In conclusion". Do not mention these rules or include a word count.`;
+WRITING STANDARDS:
+- NO TITLE IN OUTPUT: Do NOT output any title or heading on the first line. Do NOT repeat the article title anywhere in the text. Your very first word MUST be the opening sentence of the article hook.
+- HOOK IMMEDIATELY: Open with a compelling stat, real-world pain point, or counter-intuitive reality. Zero fluff or introductory throat-clearing (never say "In this article...", "Welcome to...").
+- VALUE & CONCRETE EXAMPLES: Hyper-specific to this niche. Include actionable techniques, realistic numbers/metrics, and concrete recommendations.
+- SCANNABILITY: Use clear H2 subheadings for every main section, bullet points for lists, and bold text for key insights. Keep paragraphs short (2-3 sentences max).
+- FORBIDDEN AI CLICHÉS: Never use: "Delving", "Unveiling", "Navigating", "Demystifying", "In today's fast-paced world", "It's important to note", "In conclusion", "Tapestry", "Beacon".
+- ACTIONABLE CLOSE: End with an actionable "Key Takeaways" or "Next Steps" section. Do not mention rules or word counts.`;
 
 export const runtime = "edge";
 

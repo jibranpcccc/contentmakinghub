@@ -79,13 +79,13 @@ export async function POST(req: Request) {
 
     let wordRule = "Write exactly 500-600 words — not more, not less.";
     let userWordRule = "Target: 500-600 words.";
-    let calcMaxTokens = 1000;
+    let calcMaxTokens = 1300;
 
     if (targetWordCount && targetWordCount !== "default") {
       const targetInt = parseInt(targetWordCount);
       wordRule = `CRITICAL LENGTH INSTRUCTION: Write approximately ${targetInt} words. Ensure your article is sufficiently detailed to reach this length, but conclude naturally once the topic is thoroughly covered. Do not cut off mid-sentence.`;
       userWordRule = `Target: ~${targetInt} words. Ensure the full article is finished and not truncated.`;
-      calcMaxTokens = Math.min(4000, Math.max(750, Math.round(targetInt * 1.5) + 150));
+      calcMaxTokens = Math.min(4000, Math.max(900, Math.round(targetInt * 1.6) + 200));
     }
 
     const systemPrompt = prompt

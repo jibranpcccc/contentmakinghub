@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing title, keyword, or prompt" }, { status: 400 });
     }
 
-    const rawKeys = [
+    const explicitKeys = [
       process.env.MISTRAL_API_KEY,
       process.env.MISTRAL_API_KEY_1,
       process.env.MISTRAL_API_KEY_2,
@@ -41,9 +41,18 @@ export async function POST(req: Request) {
       process.env.MISTRAL_API_KEY_18,
       process.env.MISTRAL_API_KEY_19,
       process.env.MISTRAL_API_KEY_20,
+      process.env.MISTRAL_API_KEY_21,
+      process.env.MISTRAL_API_KEY_22,
+      process.env.MISTRAL_API_KEY_23,
+      process.env.MISTRAL_API_KEY_24,
     ];
     
-    const keys = rawKeys.filter(k => k && k !== "your_mistral_api_key_here") as string[];
+    const envKeys = Object.keys(process.env)
+      .filter(k => k.startsWith("MISTRAL_API_KEY"))
+      .map(k => process.env[k]);
+
+    const rawKeys = [...explicitKeys, ...envKeys];
+    const keys = Array.from(new Set(rawKeys.filter(k => k && k !== "your_mistral_api_key_here"))) as string[];
     
     if (keys.length === 0) return NextResponse.json({ error: "Missing API Key for Mistral" }, { status: 500 });
 
@@ -83,28 +92,29 @@ export async function POST(req: Request) {
       .replace(/\[topic\]/gi, keyword)
       .replace(/\[keyword\]/gi, keyword) + BASE_QUALITY_RULES + `\n\n${wordRule}` + formatRule + `\nLANGUAGE: Write the ENTIRE article in ${lang}. Every word must be in ${lang}.`;
 
-    const payload = {
-      model: "mistral-large-latest",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `You are writing a blog article for a reader who searched for "${keyword}" and clicked on this title: "${title}". Write the full article in ${lang}. ${userWordRule} Make it highly relevant, specific, and useful to that reader.` },
-      ],
-      temperature: 0.75,
-      top_p: 0.9,
-      max_tokens: calcMaxTokens,
-      stream: true,
-    };
-
     const apiUrl = "https://api.mistral.ai/v1/chat/completions";
 
     let dsResponse;
     let usedKey;
     let lastErrorMsg = "";
     let currentKeyIndex = typeof workerIndex === "number" ? workerIndex : Math.floor(Math.random() * keys.length);
-    const maxRetries = 3;
+    const maxRetries = 5;
 
     for (let i = 0; i < maxRetries; i++) {
       usedKey = keys[currentKeyIndex % keys.length];
+      const model = i >= 3 ? "open-mistral-nemo" : "codestral-latest";
+
+      const payload = {
+        model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `You are writing a blog article for a reader who searched for "${keyword}" and clicked on this title: "${title}". Write the full article in ${lang}. ${userWordRule} Make it highly relevant, specific, and useful to that reader.` },
+        ],
+        temperature: 0.75,
+        top_p: 0.9,
+        max_tokens: calcMaxTokens,
+        stream: true,
+      };
       
       dsResponse = await fetch(apiUrl, {
         method: "POST",
@@ -116,7 +126,7 @@ export async function POST(req: Request) {
         break;
       } else {
         lastErrorMsg = await dsResponse.text();
-        console.error(`[Mistral API Error] Status: ${dsResponse.status} | Key: ...${usedKey?.slice(-4)} | WorkerIndex: ${workerIndex}`);
+        console.error(`[Mistral API Error] Status: ${dsResponse.status} | Model: ${model} | Key: ...${usedKey?.slice(-4)} | WorkerIndex: ${workerIndex}`);
         currentKeyIndex++; // Try the next key on failure
       }
     }

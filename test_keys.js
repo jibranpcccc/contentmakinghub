@@ -22,7 +22,7 @@ async function testKey(key) {
           "Authorization": `Bearer ${key}`
         },
         body: JSON.stringify({
-          model: "mistral-large-latest",
+          model: "codestral-latest",
           messages: [{ role: "user", content: "Say hello" }],
           max_tokens: 10
         })

@@ -43,14 +43,21 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
   }, [startTime]);
 
   useEffect(() => {
-    const selectedTitles = state.generatedTitles.filter((t) => t.selected);
+    let selectedTitles = state.generatedTitles.filter((t) => t.selected);
+    if (selectedTitles.length === 0 && state.generatedTitles.length > 0) {
+      selectedTitles = state.generatedTitles;
+    }
+
+    const validIndices = (state.selectedPromptIndices && state.selectedPromptIndices.length > 0)
+      ? state.selectedPromptIndices
+      : [0];
 
     // Create jobs
     const newJobs: JobStatus[] = selectedTitles.map((t, i) => ({
       id: uuidv4(),
       title: t.title,
       keyword: t.keyword,
-      promptIndex: state.selectedPromptIndices[i % state.selectedPromptIndices.length],
+      promptIndex: validIndices[i % validIndices.length],
       status: "queued" as const,
     }));
     setJobs(newJobs);
@@ -61,30 +68,33 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
       payload: newJobs.map((j, i) => ({ id: j.id, titleIndex: i, promptIndex: j.promptIndex, status: "queued" })),
     });
 
-    // Fetch max concurrency dynamically based on available API keys
+    // In web browsers, limit concurrent streams to 8 to avoid socket starvation and ECONNRESET
     fetch(`/api/key-count?provider=${state.provider}`)
       .then(res => res.json())
-      .catch(() => ({ count: null }))
+      .catch(() => ({ count: 8 }))
       .then(data => {
-        const CONCURRENCY = Math.max(data.count || 24, 24);
+        const CONCURRENCY = Math.min(Math.max(data.count || 8, 4), 8);
         let nextIndex = 0;
 
         const processOne = async (jobIndex: number, workerIndex: number, attempt = 1) => {
           if (cancelledRef.current) return;
           const job = newJobs[jobIndex];
+          if (!job) return;
 
       // Update to running
       setJobs((prev) => prev.map((j) => j.id === job.id ? { ...j, status: "running" } : j));
       dispatch({ type: "UPDATE_JOB", payload: { id: job.id, status: "running" } });
 
       try {
+        const safePrompt = (state.prompts && state.prompts[job.promptIndex]) || "Act as an expert author. Write an insightful, comprehensive article about [topic].";
+
         const res = await fetch("/api/generate-articles", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: job.title,
             keyword: job.keyword,
-            prompt: state.prompts[job.promptIndex],
+            prompt: safePrompt,
             language: state.language,
             outputFormat: state.outputFormat,
             provider: state.provider,

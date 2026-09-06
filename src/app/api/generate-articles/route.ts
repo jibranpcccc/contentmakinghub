@@ -21,9 +21,9 @@ export async function POST(req: Request) {
     const lang = language || "English";
     const fmt = outputFormat || "markdown";
 
-    if (!title || !keyword || !prompt) {
-      return NextResponse.json({ error: "Missing title, keyword, or prompt" }, { status: 400 });
-    }
+    const cleanKeyword = String(keyword || "").trim() || "General Topic";
+    const cleanTitle = String(title || "").trim() || `${cleanKeyword} Guide`;
+    const cleanPrompt = String(prompt || "").trim() || "Act as an expert author. Write an insightful, comprehensive article about [topic].";
 
     const explicitKeys = [
       process.env.MISTRAL_API_KEY,
@@ -94,9 +94,9 @@ export async function POST(req: Request) {
       calcMaxTokens = Math.min(4000, Math.max(900, Math.round(targetInt * 1.6) + 200));
     }
 
-    const systemPrompt = prompt
-      .replace(/\[topic\]/gi, keyword)
-      .replace(/\[keyword\]/gi, keyword) + BASE_QUALITY_RULES + `\n\n${wordRule}` + formatRule + `\nLANGUAGE: Write the ENTIRE article in ${lang}. Every word must be in ${lang}.`;
+    const systemPrompt = cleanPrompt
+      .replace(/\[topic\]/gi, cleanKeyword)
+      .replace(/\[keyword\]/gi, cleanKeyword) + BASE_QUALITY_RULES + `\n\n${wordRule}` + formatRule + `\nLANGUAGE: Write the ENTIRE article in ${lang}. Every word must be in ${lang}.`;
 
     const apiUrl = "https://api.mistral.ai/v1/chat/completions";
 
@@ -114,7 +114,7 @@ export async function POST(req: Request) {
         model,
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `You are writing a blog article for a reader who searched for "${keyword}" and clicked on this title: "${title}". Write the full article in ${lang}. ${userWordRule} Make it highly relevant, specific, and useful to that reader.` },
+          { role: "user", content: `You are writing a blog article for a reader who searched for "${cleanKeyword}" and clicked on this title: "${cleanTitle}". Write the full article in ${lang}. ${userWordRule} Make it highly relevant, specific, and useful to that reader.` },
         ],
         temperature: 0.75,
         top_p: 0.9,
@@ -179,7 +179,13 @@ export async function POST(req: Request) {
       },
     });
 
-    return new Response(stream, { headers: { "Content-Type": "text/plain" } });
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "X-Accel-Buffering": "no",
+      },
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Failed" }, { status: 500 });
   }

@@ -226,8 +226,24 @@ export default function InputStep({ onNext }: InputStepProps) {
             💡 50 unique article styles rotate automatically. Language: <strong>{state.language}</strong>
           </div>
 
-          <button onClick={handleGenerate} disabled={!isFormValid} className="btn-primary"
-            style={{ alignSelf: "stretch", justifyContent: "center", padding: "0.85rem", fontSize: "1rem" }}>
+          <button
+            onClick={() => {
+              if (!isFormValid) {
+                if (keywordCount === 0) setError("Please enter at least one keyword in the box above.");
+                else if (state.totalArticles <= 0) setError("Please enter how many articles you need (minimum 1).");
+                return;
+              }
+              handleGenerate();
+            }}
+            className="btn-primary"
+            style={{
+              alignSelf: "stretch",
+              justifyContent: "center",
+              padding: "0.85rem",
+              fontSize: "1rem",
+              opacity: isFormValid ? 1 : 0.7,
+              cursor: isFormValid ? "pointer" : "not-allowed"
+            }}>
             🚀 Generate {state.totalArticles} Article Titles
           </button>
         </>

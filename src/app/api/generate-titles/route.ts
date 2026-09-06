@@ -31,7 +31,8 @@ export async function POST(req: Request) {
     let remaining = num;
     while (remaining > 0) {
       const take = Math.min(remaining, BATCH_SIZE);
-      batchCounts.push(take);
+      const targetTake = Math.min(take + 4, 25);
+      batchCounts.push(targetTake);
       remaining -= take;
     }
 

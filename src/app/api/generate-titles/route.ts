@@ -15,9 +15,10 @@ export const runtime = "edge";
 // Handles ONE keyword at a time with parallel sub-batching — fast, ultra-reliable, zero timeout
 export async function POST(req: Request) {
   try {
-    const { keyword, count, language } = await req.json();
+    const { keyword, count, language, batchSeed } = await req.json();
     const lang = language || "English";
     const num = Math.min(Math.max(Number(count) || 1, 1), 200);
+    const seedOffset = Number.isFinite(Number(batchSeed)) ? Number(batchSeed) : 0;
 
     if (!keyword || typeof keyword !== "string" || !keyword.trim()) {
       return NextResponse.json({ error: "Keyword is required" }, { status: 400 });
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
     ];
 
     const batchPromises = batchCounts.map(async (batchCount, bIdx) => {
-      const angle = angles[bIdx % angles.length];
+      const angle = angles[(bIdx + seedOffset) % angles.length];
       const systemPrompt = `You generate unique, click-worthy article titles for blog/PBN websites.
 Write ALL titles in ${lang}.
 Focus heavily on these angles: ${angle}.
@@ -117,7 +118,7 @@ Rules:
       "Key Steps to Maximize ROI with",
       "High-Impact Tactics for"
     ];
-    let fbIdx = 0;
+    let fbIdx = seedOffset * 10;
     while (unique.length < num) {
       const template = fallbackTemplates[fbIdx % fallbackTemplates.length];
       const candidate = `${template} ${cleanKeyword} (Part ${Math.floor(fbIdx / fallbackTemplates.length) + 1})`;

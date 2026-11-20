@@ -10,7 +10,7 @@ const URL_REGEX = /^https?:\/\/\S+$/i;
  * - Comma-separated: `keyword, https://...` or `https://..., keyword`
  * - Space-separated with URL at start or end: `https://... keyword` or `keyword https://...`
  */
-export function parseKeywordLines(input: string, maxItems = 500): KeywordItem[] {
+export function parseKeywordLines(input: string, maxItems = 5000): KeywordItem[] {
   const lines = input.split(/\r?\n/);
   const items: KeywordItem[] = [];
   const seen = new Set<string>();

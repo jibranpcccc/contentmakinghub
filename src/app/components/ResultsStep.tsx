@@ -14,12 +14,18 @@ export default function ResultsStep({ onRestart }: ResultsStepProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
 
   const filtered = filter
     ? state.articles.filter(
         (a) => a.title.toLowerCase().includes(filter.toLowerCase()) || a.keyword.toLowerCase().includes(filter.toLowerCase())
       )
     : state.articles;
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const visibleArticles = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
   const uniqueKeywords = new Set(state.articles.map((a) => a.keyword));
   const totalWords = state.articles.reduce((sum, a) => sum + a.content.split(/\s+/).length, 0);
@@ -89,13 +95,24 @@ export default function ResultsStep({ onRestart }: ResultsStepProps) {
           type="text"
           placeholder="🔍 Filter by title or keyword..."
           value={filter}
-          onChange={(e) => setFilter(e.target.value)}
+          onChange={(e) => { setFilter(e.target.value); setPage(0); }}
         />
 
-        <p className="field-hint" style={{ margin: 0 }}>Showing {filtered.length} of {state.articles.length} articles. Click to expand.</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+          <p className="field-hint" style={{ margin: 0 }}>
+            Showing {filtered.length === 0 ? 0 : safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, filtered.length)} of {filtered.length} articles. Click to expand.
+          </p>
+          {totalPages > 1 && (
+            <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+              <button className="btn-outlined" style={{ padding: "0.25rem 0.6rem", fontSize: "0.78rem" }} disabled={safePage === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>← Prev</button>
+              <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>Page {safePage + 1} / {totalPages}</span>
+              <button className="btn-outlined" style={{ padding: "0.25rem 0.6rem", fontSize: "0.78rem" }} disabled={safePage >= totalPages - 1} onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}>Next →</button>
+            </div>
+          )}
+        </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "600px", overflowY: "auto" }}>
-          {filtered.map((article) => {
+          {visibleArticles.map((article) => {
             const isExpanded = expandedId === article.id;
             const wordCount = article.content.split(/\s+/).length;
             return (

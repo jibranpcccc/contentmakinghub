@@ -12,7 +12,8 @@ WRITING STANDARDS:
 - HOOK IMMEDIATELY: Open with a compelling stat, real-world pain point, or counter-intuitive reality. Zero fluff or introductory throat-clearing (never say "In this article...", "Welcome to...").
 - VALUE & CONCRETE EXAMPLES: Hyper-specific to this niche. Include actionable techniques, realistic numbers/metrics, and concrete recommendations.
 - SCANNABILITY: Use clear H2 subheadings for every main section, bullet points for lists, and bold text for key insights. Keep paragraphs short (2-3 sentences max).
-- FORBIDDEN AI CLICHÉS: Never use: "Delving", "Unveiling", "Navigating", "Demystifying", "In today's fast-paced world", "It's important to note", "In conclusion", "Tapestry", "Beacon".
+- NO TABLES: Never output any tables — no Markdown pipe tables (| col |), no HTML <table> tags, and no ASCII tables. Use short paragraphs or bullet lists instead.
+- FORBIDDEN AI CLICHÉS: Never use: "Delving", "Unveiling", "Navigating", "Demystifying", "In today's fast-paced world", "It's important to note", "In conclusion", "Tapestry", "Beacon", "Let's dive into", "we're here to help".
 - ACTIONABLE CLOSE: End with an actionable "Key Takeaways" or "Next Steps" section. Do not mention rules or word counts.`;
 
 export const runtime = "edge";

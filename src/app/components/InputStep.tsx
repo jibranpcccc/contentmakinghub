@@ -38,7 +38,7 @@ export default function InputStep({ onNext }: InputStepProps) {
   const [keywordStatuses, setKeywordStatuses] = useState<KeywordStatus[]>([]);
   const [expandedKw, setExpandedKw] = useState<string | null>(null);
 
-  const parsedItems = useMemo(() => parseKeywordLines(keywordText, 500), [keywordText]);
+  const parsedItems = useMemo(() => parseKeywordLines(keywordText, 5000), [keywordText]);
   const keywordCount = parsedItems.length;
   const urlCount = useMemo(() => parsedItems.filter((i) => Boolean(i.url)).length, [parsedItems]);
   const isFormValid = keywordCount > 0 && state.totalArticles > 0 && state.language.length > 0;
@@ -48,13 +48,13 @@ export default function InputStep({ onNext }: InputStepProps) {
   };
 
   const handleGenerate = async () => {
-    const items = parseKeywordLines(keywordText, 500);
+    const items = parseKeywordLines(keywordText, 5000);
     if (items.length === 0) return;
     dispatch({ type: "SET_KEYWORD_ITEMS", payload: items });
     setIsGenerating(true);
     setError(null);
 
-    const total = state.totalArticles;
+    const total = Math.min(state.totalArticles, 5000);
     const base = Math.floor(total / items.length);
     const remainder = total % items.length;
 
@@ -62,14 +62,20 @@ export default function InputStep({ onNext }: InputStepProps) {
     const statuses: KeywordStatus[] = items.map((item) => ({ keyword: item.keyword, status: "waiting", titles: [] }));
     setKeywordStatuses(statuses);
 
-    const kwTasks = items.map((item, i) => ({
-      kw: item.keyword,
-      url: item.url,
-      count: base + (i < remainder ? 1 : 0),
-    })).filter(t => t.count > 0);
+    // Chunk any keyword needing >100 titles into 100-title batches so 5000-article single-keyword runs never time out
+    const kwTasks: { kw: string; url?: string; count: number; batchSeed: number }[] = [];
+    items.forEach((item, i) => {
+      let remainingForKw = base + (i < remainder ? 1 : 0);
+      let seed = 0;
+      while (remainingForKw > 0) {
+        const take = Math.min(remainingForKw, 100);
+        kwTasks.push({ kw: item.keyword, url: item.url, count: take, batchSeed: seed++ });
+        remainingForKw -= take;
+      }
+    });
 
     // Bounded concurrency (16) for blazing-fast title generation across 24 keys
-    const CONCURRENCY = Math.min(16, kwTasks.length);
+    const CONCURRENCY = Math.min(16, Math.max(1, kwTasks.length));
     let nextTaskIdx = 0;
     const titleResults: GeneratedTitle[][] = new Array(kwTasks.length);
 
@@ -77,7 +83,7 @@ export default function InputStep({ onNext }: InputStepProps) {
       while (true) {
         const idx = nextTaskIdx++;
         if (idx >= kwTasks.length) break;
-        const { kw, url, count } = kwTasks[idx];
+        const { kw, url, count, batchSeed } = kwTasks[idx];
 
         setKeywordStatuses((prev) => prev.map((ks) =>
           ks.keyword === kw ? { ...ks, status: "generating" } : ks
@@ -87,7 +93,7 @@ export default function InputStep({ onNext }: InputStepProps) {
           const res = await fetch("/api/generate-titles", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ keyword: kw, count, language: state.language, provider: state.provider }),
+            body: JSON.stringify({ keyword: kw, count, batchSeed, language: state.language, provider: state.provider }),
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || "Failed");
@@ -97,13 +103,13 @@ export default function InputStep({ onNext }: InputStepProps) {
             ...(url ? { url } : {}),
           }));
           setKeywordStatuses((prev) => prev.map((ks) =>
-            ks.keyword === kw ? { ...ks, status: "done", titles: titles.map((t) => t.title) } : ks
+            ks.keyword === kw ? { ...ks, status: "done", titles: [...ks.titles, ...titles.map((t) => t.title)] } : ks
           ));
           titleResults[idx] = titles;
         } catch (err: any) {
           const fallbackTitles: GeneratedTitle[] = [];
           for (let j = 0; j < count; j++) {
-            fallbackTitles.push({ keyword: kw, ...(url ? { url } : {}), title: `${kw} Guide #${j + 1}`, selected: true });
+            fallbackTitles.push({ keyword: kw, ...(url ? { url } : {}), title: `${kw} Guide #${batchSeed * 100 + j + 1}`, selected: true });
           }
           setKeywordStatuses((prev) => prev.map((ks) =>
             ks.keyword === kw ? { ...ks, status: "error", error: err.message } : ks
@@ -213,9 +219,9 @@ export default function InputStep({ onNext }: InputStepProps) {
 
           {/* Article Count */}
           <div>
-            <label className="field-label">How many articles do you need?</label>
-            <input type="number" min={1} max={500} value={state.totalArticles}
-              onChange={(e) => dispatch({ type: "SET_TOTAL_ARTICLES", payload: Math.max(1, parseInt(e.target.value) || 1) })}
+            <label className="field-label">How many articles do you need? (up to 5,000)</label>
+            <input type="number" min={1} max={5000} value={state.totalArticles}
+              onChange={(e) => dispatch({ type: "SET_TOTAL_ARTICLES", payload: Math.min(5000, Math.max(1, parseInt(e.target.value) || 1)) })}
               style={{ width: "160px" }} />
             <p className="field-hint">Each article will be generated according to the styles auto-rotated.</p>
           </div>

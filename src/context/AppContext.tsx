@@ -51,6 +51,8 @@ const initialState: AppState = {
   language: "English",
   outputFormat: "markdown",
   keywords: [],
+  keywordItems: [],
+  exactMatchLink: true,
   prompts: defaultPrompts,
   selectedPromptIndices: Array.from({ length: 20 }, (_, i) => i),
   totalArticles: 10,
@@ -70,6 +72,10 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, outputFormat: action.payload };
     case "SET_KEYWORDS":
       return { ...state, keywords: action.payload };
+    case "SET_KEYWORD_ITEMS":
+      return { ...state, keywordItems: action.payload, keywords: action.payload.map((i) => i.keyword) };
+    case "SET_EXACT_MATCH_LINK":
+      return { ...state, exactMatchLink: action.payload };
     case "SET_PROMPTS":
       return { ...state, prompts: action.payload };
     case "SET_SELECTED_PROMPT_INDICES":

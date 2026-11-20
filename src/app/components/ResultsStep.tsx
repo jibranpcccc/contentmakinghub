@@ -108,6 +108,11 @@ export default function ResultsStep({ onRestart }: ResultsStepProps) {
                     <h4 style={{ margin: 0, fontSize: "0.9rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{article.title}</h4>
                     <div style={{ display: "flex", gap: "0.4rem", marginTop: "0.2rem", flexWrap: "wrap" }}>
                       <span className="badge badge-accent">{article.keyword}</span>
+                      {article.url && (
+                        <span className="badge badge-muted" style={{ maxWidth: "240px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={article.url}>
+                          🔗 {article.url}
+                        </span>
+                      )}
                       <span className="badge badge-muted">{article.promptUsed}</span>
                       <span className="badge badge-muted">{wordCount} words</span>
                     </div>

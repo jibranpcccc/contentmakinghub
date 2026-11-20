@@ -92,12 +92,12 @@ Rules:
     const results = await Promise.all(batchPromises);
     const allTitles = results.flat();
 
-    // Deduplicate
+    // Deduplicate (Unicode-aware so non-Latin languages are preserved)
     const unique: string[] = [];
     const seen = new Set<string>();
     
     for (const t of allTitles) {
-      const normalized = t.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const normalized = t.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
       if (normalized.length > 5 && !seen.has(normalized)) {
         seen.add(normalized);
         unique.push(t);
@@ -121,7 +121,7 @@ Rules:
     while (unique.length < num) {
       const template = fallbackTemplates[fbIdx % fallbackTemplates.length];
       const candidate = `${template} ${cleanKeyword} (Part ${Math.floor(fbIdx / fallbackTemplates.length) + 1})`;
-      const norm = candidate.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const norm = candidate.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
       if (!seen.has(norm)) {
         seen.add(norm);
         unique.push(candidate);

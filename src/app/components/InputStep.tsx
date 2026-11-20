@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useAppContext } from "@/context/AppContext";
-import { GeneratedTitle, OutputFormat, Provider } from "@/lib/types";
+import { GeneratedTitle, OutputFormat } from "@/lib/types";
+import { parseKeywordLines, formatKeywordItemsToText } from "@/lib/keywordParser";
 
 interface InputStepProps {
   onNext: () => void;
@@ -25,7 +26,11 @@ interface KeywordStatus {
 
 export default function InputStep({ onNext }: InputStepProps) {
   const { state, dispatch } = useAppContext();
-  const [keywordText, setKeywordText] = useState(state.keywords.join("\n"));
+  const [keywordText, setKeywordText] = useState(() =>
+    state.keywordItems.length > 0
+      ? formatKeywordItemsToText(state.keywordItems)
+      : state.keywords.join("\n")
+  );
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [customLang, setCustomLang] = useState("");
@@ -33,7 +38,9 @@ export default function InputStep({ onNext }: InputStepProps) {
   const [keywordStatuses, setKeywordStatuses] = useState<KeywordStatus[]>([]);
   const [expandedKw, setExpandedKw] = useState<string | null>(null);
 
-  const keywordCount = keywordText.split("\n").map((k) => k.trim()).filter((k) => k.length > 0).length;
+  const parsedItems = useMemo(() => parseKeywordLines(keywordText, 500), [keywordText]);
+  const keywordCount = parsedItems.length;
+  const urlCount = useMemo(() => parsedItems.filter((i) => Boolean(i.url)).length, [parsedItems]);
   const isFormValid = keywordCount > 0 && state.totalArticles > 0 && state.language.length > 0;
 
   const handleLanguageChange = (val: string) => {
@@ -41,27 +48,37 @@ export default function InputStep({ onNext }: InputStepProps) {
   };
 
   const handleGenerate = async () => {
-    const keywords = [...new Set(keywordText.split("\n").map((k) => k.trim()).filter((k) => k.length > 0))].slice(0, 50);
-    if (keywords.length === 0) return;
-    dispatch({ type: "SET_KEYWORDS", payload: keywords });
+    const items = parseKeywordLines(keywordText, 500);
+    if (items.length === 0) return;
+    dispatch({ type: "SET_KEYWORD_ITEMS", payload: items });
     setIsGenerating(true);
     setError(null);
 
     const total = state.totalArticles;
-    const base = Math.floor(total / keywords.length);
-    const remainder = total % keywords.length;
+    const base = Math.floor(total / items.length);
+    const remainder = total % items.length;
 
     // Init statuses
-    const statuses: KeywordStatus[] = keywords.map((kw) => ({ keyword: kw, status: "waiting", titles: [] }));
+    const statuses: KeywordStatus[] = items.map((item) => ({ keyword: item.keyword, status: "waiting", titles: [] }));
     setKeywordStatuses(statuses);
 
-    const kwTasks = keywords.map((kw, i) => ({
-      kw,
+    const kwTasks = items.map((item, i) => ({
+      kw: item.keyword,
+      url: item.url,
       count: base + (i < remainder ? 1 : 0),
     })).filter(t => t.count > 0);
 
-    const titleResults = await Promise.all(
-      kwTasks.map(async ({ kw, count }) => {
+    // Bounded concurrency (5) so large keyword lists from Google Sheets don't overwhelm the browser/Edge
+    const CONCURRENCY = Math.min(5, kwTasks.length);
+    let nextTaskIdx = 0;
+    const titleResults: GeneratedTitle[][] = new Array(kwTasks.length);
+
+    const worker = async () => {
+      while (true) {
+        const idx = nextTaskIdx++;
+        if (idx >= kwTasks.length) break;
+        const { kw, url, count } = kwTasks[idx];
+
         setKeywordStatuses((prev) => prev.map((ks) =>
           ks.keyword === kw ? { ...ks, status: "generating" } : ks
         ));
@@ -75,25 +92,30 @@ export default function InputStep({ onNext }: InputStepProps) {
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || "Failed");
 
-          const titles: GeneratedTitle[] = data.titles;
+          const titles: GeneratedTitle[] = (data.titles as GeneratedTitle[]).map((t) => ({
+            ...t,
+            ...(url ? { url } : {}),
+          }));
           setKeywordStatuses((prev) => prev.map((ks) =>
             ks.keyword === kw ? { ...ks, status: "done", titles: titles.map((t) => t.title) } : ks
           ));
-          return titles;
+          titleResults[idx] = titles;
         } catch (err: any) {
           const fallbackTitles: GeneratedTitle[] = [];
           for (let j = 0; j < count; j++) {
-            fallbackTitles.push({ keyword: kw, title: `${kw} Guide #${j + 1}`, selected: true });
+            fallbackTitles.push({ keyword: kw, ...(url ? { url } : {}), title: `${kw} Guide #${j + 1}`, selected: true });
           }
           setKeywordStatuses((prev) => prev.map((ks) =>
             ks.keyword === kw ? { ...ks, status: "error", error: err.message } : ks
           ));
-          return fallbackTitles;
+          titleResults[idx] = fallbackTitles;
         }
-      })
-    );
+      }
+    };
 
-    const allTitles: GeneratedTitle[] = titleResults.flat();
+    await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+
+    const allTitles: GeneratedTitle[] = titleResults.flat().filter(Boolean);
 
     dispatch({ type: "SET_GENERATED_TITLES", payload: allTitles });
     setIsGenerating(false);
@@ -210,20 +232,41 @@ export default function InputStep({ onNext }: InputStepProps) {
             <p className="field-hint">Forces the AI to write a specific length without cutting off.</p>
           </div>
 
-          {/* Keywords */}
+          {/* Keywords & Optional URLs */}
           <div>
-            <label className="field-label">Keywords (one per line, up to 50)</label>
+            <label className="field-label">Keywords &amp; Optional URLs (one per line, paste directly from Google Sheets)</label>
             <textarea value={keywordText} onChange={(e) => setKeywordText(e.target.value)}
-              placeholder={"machine learning basics\ndigital marketing tips\nhealthy meal prep"}
-              rows={5} style={{ resize: "vertical", fontFamily: "monospace", fontSize: "0.9rem" }} />
+              placeholder={"advanced breast imaging\thttps://example.com/page-1\ndigital marketing tips | https://example.com/page-2\nhealthy meal prep"}
+              rows={5} style={{ resize: "vertical", fontFamily: "monospace", fontSize: "0.88rem" }} />
             <p className="field-hint">
               {keywordCount} keyword{keywordCount !== 1 ? "s" : ""}
-              {keywordCount > 0 && state.totalArticles > 0 && <> → <strong>~{Math.max(1, Math.ceil(state.totalArticles / keywordCount))} titles</strong> per keyword</>}
+              {urlCount > 0 && <> (<strong>{urlCount} with URL{urlCount !== 1 ? "s" : ""}</strong>)</>}
+              {keywordCount > 0 && state.totalArticles > 0 && <> → <strong>~{Math.max(1, Math.ceil(state.totalArticles / keywordCount))} title{Math.ceil(state.totalArticles / keywordCount) !== 1 ? "s" : ""}</strong> per keyword</>}
+              {" · "}Supports plain keywords or <code>keyword + URL</code> separated by Tab (Google Sheets), <code>|</code>, comma, or space.
             </p>
           </div>
 
+          {urlCount > 0 && (
+            <label style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", background: "var(--bg-dark)", border: "1px solid var(--border-accent)", borderRadius: "var(--radius-md)", padding: "0.75rem 1rem", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={state.exactMatchLink}
+                onChange={(e) => dispatch({ type: "SET_EXACT_MATCH_LINK", payload: e.target.checked })}
+                style={{ width: "1.05rem", height: "1.05rem", marginTop: "0.15rem", cursor: "pointer" }}
+              />
+              <div style={{ fontSize: "0.86rem" }}>
+                <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>
+                  🔗 100% Exact-Match Keyword Hyperlink
+                </div>
+                <div style={{ color: "var(--text-secondary)", marginTop: "0.15rem" }}>
+                  Automatically hyperlinks the exact keyword text to its paired URL in the selected output format (<code>{state.outputFormat}</code>).
+                </div>
+              </div>
+            </label>
+          )}
+
           <div style={{ background: "var(--accent-soft)", borderRadius: "var(--radius-md)", padding: "0.75rem 1rem", fontSize: "0.85rem", color: "var(--accent)" }}>
-            💡 50 unique article styles rotate automatically. Language: <strong>{state.language}</strong>
+            💡 {state.prompts.length} unique article styles rotate automatically. Language: <strong>{state.language}</strong>
           </div>
 
           <button

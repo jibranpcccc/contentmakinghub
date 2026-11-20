@@ -4,6 +4,11 @@ export type OutputFormat = "markdown" | "plain" | "html" | "bbcode" | "wiki";
 
 export type Provider = "mistral";
 
+export interface KeywordItem {
+  keyword: string;
+  url?: string;
+}
+
 export interface Job {
   id: string;
   titleIndex: number;
@@ -16,6 +21,7 @@ export interface Article {
   id: string;
   title: string;
   keyword: string;
+  url?: string;
   promptUsed: string;
   content: string;
   generatedAt: number;
@@ -23,6 +29,7 @@ export interface Article {
 
 export interface GeneratedTitle {
   keyword: string;
+  url?: string;
   title: string;
   selected: boolean;
 }
@@ -32,6 +39,8 @@ export interface AppState {
   language: string;              // output language
   outputFormat: OutputFormat;    // article heading format
   keywords: string[];
+  keywordItems: KeywordItem[];
+  exactMatchLink: boolean;
   prompts: string[];
   selectedPromptIndices: number[];
   totalArticles: number;
@@ -46,6 +55,8 @@ export type AppAction =
   | { type: "SET_LANGUAGE"; payload: string }
   | { type: "SET_OUTPUT_FORMAT"; payload: OutputFormat }
   | { type: "SET_KEYWORDS"; payload: string[] }
+  | { type: "SET_KEYWORD_ITEMS"; payload: KeywordItem[] }
+  | { type: "SET_EXACT_MATCH_LINK"; payload: boolean }
   | { type: "SET_PROMPTS"; payload: string[] }
   | { type: "SET_SELECTED_PROMPT_INDICES"; payload: number[] }
   | { type: "SET_TOTAL_ARTICLES"; payload: number }

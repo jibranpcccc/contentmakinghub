@@ -5,11 +5,7 @@ interface MistralOptions {
   response_format?: { type: "json_object" | "text" };
 }
 
-export async function callMistral(
-  systemPrompt: string,
-  userMessage: string,
-  options: MistralOptions = {}
-): Promise<string> {
+export function getMistralKeys(): string[] {
   const explicitKeys = [
     process.env.MISTRAL_API_KEY,
     process.env.MISTRAL_API_KEY_1,
@@ -39,11 +35,21 @@ export async function callMistral(
   ];
 
   const envKeys = Object.keys(process.env)
-    .filter(k => k.startsWith("MISTRAL_API_KEY"))
-    .map(k => process.env[k]);
+    .filter((k) => k.startsWith("MISTRAL_API_KEY"))
+    .map((k) => process.env[k]);
 
   const rawKeys = [...explicitKeys, ...envKeys];
-  const keys = Array.from(new Set(rawKeys.filter(k => k && k !== "your_mistral_api_key_here"))) as string[];
+  return Array.from(
+    new Set(rawKeys.filter((k) => k && k !== "your_mistral_api_key_here"))
+  ) as string[];
+}
+
+export async function callMistral(
+  systemPrompt: string,
+  userMessage: string,
+  options: MistralOptions = {}
+): Promise<string> {
+  const keys = getMistralKeys();
 
   if (keys.length === 0) {
     throw new Error("No MISTRAL_API_KEY found in environment variables.");
@@ -52,10 +58,14 @@ export async function callMistral(
   const shuffledKeys = [...keys].sort(() => Math.random() - 0.5);
   let lastError: Error | null = null;
   const primaryModel = options.model || "codestral-latest";
-  const candidateModels = [primaryModel, "open-mistral-nemo"];
+  const candidateModels = primaryModel === "voxtral-small-latest"
+    ? ["voxtral-small-latest", "codestral-latest"]
+    : [primaryModel, "voxtral-small-latest"];
 
   for (const apiKey of shuffledKeys) {
     for (const model of candidateModels) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
       try {
         const payload = {
           model,
@@ -65,7 +75,7 @@ export async function callMistral(
           ],
           temperature: options.temperature ?? 0.65,
           max_tokens: options.max_tokens ?? 1000,
-          ... (options.response_format ? { response_format: options.response_format } : {}),
+          ...(options.response_format ? { response_format: options.response_format } : {}),
         };
 
         const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
@@ -75,15 +85,18 @@ export async function callMistral(
             Authorization: `Bearer ${apiKey}`,
           },
           body: JSON.stringify(payload),
+          signal: controller.signal,
         });
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => null);
-          throw new Error(`Mistral API error (${model}): ${response.status} ${response.statusText} ${errorData ? JSON.stringify(errorData) : ""}`);
+          throw new Error(
+            `Mistral API error (${model}): ${response.status} ${response.statusText} ${errorData ? JSON.stringify(errorData) : ""}`
+          );
         }
 
         const data = await response.json();
-        
+
         if (!data.choices || data.choices.length === 0) {
           throw new Error("No choices returned from Mistral API.");
         }
@@ -92,7 +105,8 @@ export async function callMistral(
       } catch (err: any) {
         lastError = err;
         console.error(`Key ending in ${apiKey.slice(-4)} (${model}) failed: ${err.message}`);
-        // If primary model failed due to tier restriction or 404, inner loop continues to candidate fallback model
+      } finally {
+        clearTimeout(timeoutId);
       }
     }
   }

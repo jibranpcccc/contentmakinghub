@@ -15,10 +15,11 @@ export default function TitleReviewStep({ onBack, onNext }: TitleReviewStepProps
 
   const selectedCount = state.generatedTitles.filter((t) => t.selected).length;
 
-  const grouped: Record<string, { index: number; title: string; selected: boolean }[]> = {};
+  const grouped: Record<string, { url?: string; items: { index: number; title: string; selected: boolean }[] }> = {};
   state.generatedTitles.forEach((t, i) => {
-    if (!grouped[t.keyword]) grouped[t.keyword] = [];
-    grouped[t.keyword].push({ index: i, title: t.title, selected: t.selected });
+    const groupKey = `${t.keyword}||${t.url || ""}`;
+    if (!grouped[groupKey]) grouped[groupKey] = { url: t.url, items: [] };
+    grouped[groupKey].items.push({ index: i, title: t.title, selected: t.selected });
   });
 
   const startEdit = (index: number, current: string) => { setEditingIndex(index); setEditValue(current); };
@@ -42,16 +43,22 @@ export default function TitleReviewStep({ onBack, onNext }: TitleReviewStepProps
       </div>
 
       <div style={{ maxHeight: "480px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-        {Object.entries(grouped).map(([keyword, items]) => {
-          const selInGroup = items.filter((i) => i.selected).length;
+        {Object.entries(grouped).map(([groupKey, group]) => {
+          const keyword = groupKey.split("||")[0];
+          const selInGroup = group.items.filter((i) => i.selected).length;
           return (
-            <div key={keyword}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
+            <div key={groupKey}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem", flexWrap: "wrap" }}>
                 <span style={{ fontWeight: 700, fontSize: "0.9rem" }}>{keyword}</span>
-                <span className="badge badge-accent">{selInGroup}/{items.length}</span>
+                <span className="badge badge-accent">{selInGroup}/{group.items.length}</span>
+                {group.url && (
+                  <span className="badge badge-muted" style={{ maxWidth: "360px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={group.url}>
+                    🔗 {group.url}
+                  </span>
+                )}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-                {items.map(({ index, title, selected }) => (
+                {group.items.map(({ index, title, selected }) => (
                   <div key={index} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.5rem 0.6rem", background: selected ? "var(--accent-soft)" : "var(--bg-dark)", border: `1px solid ${selected ? "var(--border-accent)" : "var(--border-light)"}`, borderRadius: "var(--radius-md)", transition: "all 100ms" }}>
                     <input type="checkbox" checked={selected} onChange={() => dispatch({ type: "TOGGLE_TITLE_SELECTION", payload: index })} style={{ width: "1rem", height: "1rem", cursor: "pointer" }} />
                     {editingIndex === index ? (

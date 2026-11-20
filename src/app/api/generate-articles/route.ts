@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { getMistralKeys } from "@/lib/mistral";
+import { formatExactLink } from "@/lib/linkInjector";
+import { OutputFormat } from "@/lib/types";
 
 const BASE_QUALITY_RULES = `
 
@@ -17,48 +20,17 @@ export const runtime = "edge";
 // Streams raw text back to the browser to ensure Netlify NEVER times out
 export async function POST(req: Request) {
   try {
-    const { title, keyword, prompt, language, outputFormat, provider, workerIndex, targetWordCount } = await req.json();
+    const { title, keyword, url, exactMatchLink, prompt, language, outputFormat, workerIndex, targetWordCount } = await req.json();
     const lang = language || "English";
-    const fmt = outputFormat || "markdown";
+    const fmt = (outputFormat || "markdown") as OutputFormat;
 
     const cleanKeyword = String(keyword || "").trim() || "General Topic";
+    const cleanUrl = typeof url === "string" ? url.trim() : "";
+    const shouldLinkExact = Boolean(cleanUrl && exactMatchLink);
     const cleanTitle = String(title || "").trim() || `${cleanKeyword} Guide`;
     const cleanPrompt = String(prompt || "").trim() || "Act as an expert author. Write an insightful, comprehensive article about [topic].";
 
-    const explicitKeys = [
-      process.env.MISTRAL_API_KEY,
-      process.env.MISTRAL_API_KEY_1,
-      process.env.MISTRAL_API_KEY_2,
-      process.env.MISTRAL_API_KEY_3,
-      process.env.MISTRAL_API_KEY_4,
-      process.env.MISTRAL_API_KEY_5,
-      process.env.MISTRAL_API_KEY_6,
-      process.env.MISTRAL_API_KEY_7,
-      process.env.MISTRAL_API_KEY_8,
-      process.env.MISTRAL_API_KEY_9,
-      process.env.MISTRAL_API_KEY_10,
-      process.env.MISTRAL_API_KEY_11,
-      process.env.MISTRAL_API_KEY_12,
-      process.env.MISTRAL_API_KEY_13,
-      process.env.MISTRAL_API_KEY_14,
-      process.env.MISTRAL_API_KEY_15,
-      process.env.MISTRAL_API_KEY_16,
-      process.env.MISTRAL_API_KEY_17,
-      process.env.MISTRAL_API_KEY_18,
-      process.env.MISTRAL_API_KEY_19,
-      process.env.MISTRAL_API_KEY_20,
-      process.env.MISTRAL_API_KEY_21,
-      process.env.MISTRAL_API_KEY_22,
-      process.env.MISTRAL_API_KEY_23,
-      process.env.MISTRAL_API_KEY_24,
-    ];
-    
-    const envKeys = Object.keys(process.env)
-      .filter(k => k.startsWith("MISTRAL_API_KEY"))
-      .map(k => process.env[k]);
-
-    const rawKeys = [...explicitKeys, ...envKeys];
-    const keys = Array.from(new Set(rawKeys.filter(k => k && k !== "your_mistral_api_key_here"))) as string[];
+    const keys = getMistralKeys();
     
     if (keys.length === 0) return NextResponse.json({ error: "Missing API Key for Mistral" }, { status: 500 });
 
@@ -94,9 +66,15 @@ export async function POST(req: Request) {
       calcMaxTokens = Math.min(4000, Math.max(900, Math.round(targetInt * 1.6) + 200));
     }
 
+    let linkRule = "";
+    if (shouldLinkExact) {
+      const exactFormattedLink = formatExactLink(cleanKeyword, cleanUrl, fmt);
+      linkRule = `\nHYPERLINK REQUIREMENT: You MUST include the exact-match keyword "${cleanKeyword}" hyperlinked to ${cleanUrl} at least once naturally inside a body paragraph (NOT inside a heading), using this EXACT syntax: ${exactFormattedLink}. Do NOT alter the anchor text "${cleanKeyword}" or the URL.`;
+    }
+
     const systemPrompt = cleanPrompt
       .replace(/\[topic\]/gi, cleanKeyword)
-      .replace(/\[keyword\]/gi, cleanKeyword) + BASE_QUALITY_RULES + `\n\n${wordRule}` + formatRule + `\nLANGUAGE: Write the ENTIRE article in ${lang}. Every word must be in ${lang}.`;
+      .replace(/\[keyword\]/gi, cleanKeyword) + BASE_QUALITY_RULES + `\n\n${wordRule}` + formatRule + linkRule + `\nLANGUAGE: Write the ENTIRE article in ${lang}. Every word must be in ${lang}.`;
 
     const apiUrl = "https://api.mistral.ai/v1/chat/completions";
 
@@ -104,17 +82,17 @@ export async function POST(req: Request) {
     let usedKey;
     let lastErrorMsg = "";
     let currentKeyIndex = typeof workerIndex === "number" ? workerIndex : Math.floor(Math.random() * keys.length);
-    const maxRetries = 5;
+    const maxRetries = Math.min(8, Math.max(5, keys.length));
 
     for (let i = 0; i < maxRetries; i++) {
       usedKey = keys[currentKeyIndex % keys.length];
-      const model = i >= 3 ? "open-mistral-nemo" : "codestral-latest";
+      const model = i >= 4 ? "codestral-latest" : "voxtral-small-latest";
 
       const payload = {
         model,
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `You are writing a blog article for a reader who searched for "${cleanKeyword}" and clicked on this title: "${cleanTitle}". Write the full article in ${lang}. ${userWordRule} Make it highly relevant, specific, and useful to that reader.` },
+          { role: "user", content: `You are writing a blog article for a reader who searched for "${cleanKeyword}" and clicked on this title: "${cleanTitle}". Write the full article in ${lang}. ${userWordRule}${shouldLinkExact ? ` Include the exact-match hyperlink ${formatExactLink(cleanKeyword, cleanUrl, fmt)} naturally in the body.` : ""} Make it highly relevant, specific, and useful to that reader.` },
         ],
         temperature: 0.75,
         top_p: 0.9,
@@ -172,7 +150,7 @@ export async function POST(req: Request) {
             }
           }
         } catch (err: any) {
-             controller.enqueue(encoder.encode(`\n\nERROR: ${err.message}`));
+             controller.enqueue(encoder.encode(`\n\n__STREAM_ERROR__: ${err.message}`));
         } finally {
           controller.close();
         }

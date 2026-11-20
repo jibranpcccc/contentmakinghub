@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useAppContext } from "@/context/AppContext";
 import { v4 as uuidv4 } from "uuid";
+import { ensureExactMatchHyperlink } from "@/lib/linkInjector";
 
 interface ProgressStepProps {
   onCancel: () => void;
@@ -13,6 +14,7 @@ interface JobStatus {
   id: string;
   title: string;
   keyword: string;
+  url?: string;
   promptIndex: number;
   status: "queued" | "running" | "done" | "error";
   error?: string;
@@ -57,6 +59,7 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
       id: uuidv4(),
       title: t.title,
       keyword: t.keyword,
+      url: t.url,
       promptIndex: validIndices[i % validIndices.length],
       status: "queued" as const,
     }));
@@ -94,6 +97,8 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
           body: JSON.stringify({
             title: job.title,
             keyword: job.keyword,
+            url: job.url,
+            exactMatchLink: state.exactMatchLink,
             prompt: safePrompt,
             language: state.language,
             outputFormat: state.outputFormat,
@@ -122,15 +127,22 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
             fullContent += decoder.decode(value, { stream: true });
           }
         }
+        fullContent += decoder.decode();
         
-        if (fullContent.includes("ERROR:")) throw new Error(fullContent.split("ERROR:")[1].trim());
+        if (fullContent.includes("__STREAM_ERROR__:")) {
+          throw new Error(fullContent.split("__STREAM_ERROR__:")[1].trim());
+        }
+
+        if (job.url && state.exactMatchLink) {
+          fullContent = ensureExactMatchHyperlink(fullContent, job.keyword, job.url, state.outputFormat);
+        }
 
         // Update to done
         setJobs((prev) => prev.map((j) => j.id === job.id ? { ...j, status: "done" } : j));
         dispatch({ type: "UPDATE_JOB", payload: { id: job.id, status: "done" } });
         dispatch({
           type: "ADD_ARTICLE",
-          payload: { id: job.id, title: job.title, keyword: job.keyword, promptUsed: state.prompts[job.promptIndex].split(":")[0], content: fullContent, generatedAt: Date.now() },
+          payload: { id: job.id, title: job.title, keyword: job.keyword, url: job.url, promptUsed: state.prompts[job.promptIndex].split(":")[0], content: fullContent, generatedAt: Date.now() },
         });
       } catch (err: any) {
         if (attempt < 3 && !cancelledRef.current) {

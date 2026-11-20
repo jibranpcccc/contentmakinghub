@@ -143,3 +143,34 @@ export function ensureExactMatchHyperlink(
 
   return `${lines.join("\n").trimEnd()}\n\n${naturalSentence}`;
 }
+
+/**
+ * Deterministically strips leftover Markdown syntax (`##`, `###`, `**bold**`, `__bold__`)
+ * so HTML-only output never contains raw Markdown headings or bold markers.
+ */
+export function normalizeHtmlOutput(content: string): string {
+  if (!content) return content;
+
+  const cleanedLines = content.split(/\r?\n/).map((line) => {
+    const trimmed = line.trim();
+    // Convert Markdown headings to <h2> / <h3>
+    const h3Match = trimmed.match(/^#{3,6}\s+(.+)$/);
+    if (h3Match) {
+      const inner = h3Match[1].replace(/\*\*|__/g, "").replace(/#+\s*$/, "").trim();
+      return `<h3>${inner}</h3>`;
+    }
+    const h12Match = trimmed.match(/^#{1,2}\s+(.+)$/);
+    if (h12Match) {
+      const inner = h12Match[1].replace(/\*\*|__/g, "").replace(/#+\s*$/, "").trim();
+      return `<h2>${inner}</h2>`;
+    }
+
+    // Strip **bold** and __bold__ markers (preserving text)
+    let out = line.replace(/\*\*([^*\n]+)\*\*/g, "$1").replace(/__([^_\n]+)__/g, "$1");
+    // Strip stray ** inside <h2>/<h3> tags
+    out = out.replace(/<(h[1-6])([^>]*)>\s*\*\*([^*<]+)\*\*\s*<\/\1>/gi, "<$1$2>$3</$1>");
+    return out;
+  });
+
+  return cleanedLines.join("\n");
+}

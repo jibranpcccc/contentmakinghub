@@ -11,7 +11,7 @@ WRITING STANDARDS:
 - NO TITLE IN OUTPUT: Do NOT output any title or heading on the first line. Do NOT repeat the article title anywhere in the text. Your very first word MUST be the opening sentence of the article hook.
 - HOOK IMMEDIATELY: Open with a compelling stat, real-world pain point, or counter-intuitive reality. Zero fluff or introductory throat-clearing (never say "In this article...", "Welcome to...").
 - VALUE & CONCRETE EXAMPLES: Hyper-specific to this niche. Include actionable techniques, realistic numbers/metrics, and concrete recommendations.
-- SCANNABILITY: Use clear H2 subheadings for every main section, bullet points for lists, and bold text for key insights. Keep paragraphs short (2-3 sentences max).
+- SCANNABILITY: Use clear <h2> and <h3> HTML subheadings for main sections and bullet points for lists. Keep paragraphs short (2-3 sentences max). Never use Markdown (##, ###, **, __).
 - NO TABLES: Never output any tables — no Markdown pipe tables (| col |), no HTML <table> tags, and no ASCII tables. Use short paragraphs or bullet lists instead.
 - FORBIDDEN AI CLICHÉS: Never use: "Delving", "Unveiling", "Navigating", "Demystifying", "In today's fast-paced world", "It's important to note", "In conclusion", "Tapestry", "Beacon", "Let's dive into", "we're here to help".
 - ACTIONABLE CLOSE: End with an actionable "Key Takeaways" or "Next Steps" section. Do not mention rules or word counts.`;

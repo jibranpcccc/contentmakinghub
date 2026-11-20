@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useAppContext } from "@/context/AppContext";
 import { v4 as uuidv4 } from "uuid";
-import { ensureExactMatchHyperlink } from "@/lib/linkInjector";
+import { ensureExactMatchHyperlink, normalizeHtmlOutput } from "@/lib/linkInjector";
 
 interface ProgressStepProps {
   onCancel: () => void;
@@ -132,6 +132,8 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
         if (fullContent.includes("__STREAM_ERROR__:")) {
           throw new Error(fullContent.split("__STREAM_ERROR__:")[1].trim());
         }
+
+        fullContent = normalizeHtmlOutput(fullContent);
 
         if (job.url && state.exactMatchLink) {
           fullContent = ensureExactMatchHyperlink(fullContent, job.keyword, job.url, state.outputFormat);

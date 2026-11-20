@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   try {
     const { title, keyword, url, exactMatchLink, prompt, language, outputFormat, workerIndex, targetWordCount } = await req.json();
     const lang = language || "English";
-    const fmt = (outputFormat || "markdown") as OutputFormat;
+    const fmt: OutputFormat = "html";
 
     const cleanKeyword = String(keyword || "").trim() || "General Topic";
     const cleanUrl = typeof url === "string" ? url.trim() : "";
@@ -35,26 +35,8 @@ export async function POST(req: Request) {
     
     if (keys.length === 0) return NextResponse.json({ error: "Missing API Key for Mistral" }, { status: 500 });
 
-    // Build format instruction based on user selection
-    let formatRule = "";
-    switch (fmt) {
-      case "plain":
-        formatRule = "\nFORMAT: Write in plain text only. Do NOT use any markdown, HTML, or special formatting. Write headings as plain uppercase text on their own line. No #, no **, no tags.";
-        break;
-      case "html":
-        formatRule = "\nFORMAT: Use HTML tags ONLY for headings (<h2> and <h3>). Everything else must be plain text with no HTML tags, no <p>, no <b>, no markdown. Just headings in HTML, rest is plain text.";
-        break;
-      case "bbcode":
-        formatRule = "\nFORMAT: Use BBCode formatting. Headings as [h2]Heading[/h2] and [h3]Heading[/h3]. Bold as [b]text[/b]. No markdown, no HTML.";
-        break;
-      case "wiki":
-        formatRule = "\nFORMAT: Use MediaWiki formatting. Headings as == Heading == and === Subheading ===. Bold as '''text'''. No markdown, no HTML.";
-        break;
-      case "markdown":
-      default:
-        formatRule = "\nFORMAT: Use Markdown formatting. Headings as ## and ###. Bold as **text**. Standard markdown.";
-        break;
-    }
+    // Always HTML format
+    const formatRule = "\nFORMAT: Use HTML tags ONLY for headings (<h2> and <h3>) and hyperlinks (<a href=\"...\">...</a> when requested). Everything else must be plain text with no <p>, no <b>, no markdown (never use ## or **). Just headings in HTML, rest is plain text.";
 
     const parsedTarget = targetWordCount && targetWordCount !== "default" ? parseInt(targetWordCount, 10) : 700;
     const targetInt = Number.isFinite(parsedTarget) && parsedTarget >= 700 ? parsedTarget : 700;

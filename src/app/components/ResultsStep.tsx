@@ -30,25 +30,21 @@ export default function ResultsStep({ onRestart }: ResultsStepProps) {
   const uniqueKeywords = new Set(state.articles.map((a) => a.keyword));
   const totalWords = state.articles.reduce((sum, a) => sum + a.content.split(/\s+/).length, 0);
 
-  const getFormattedTitle = (title: string, format: string) => {
-    if (format === "plain") return `${title}`;
-    if (format === "html") return `<h1>${title}</h1>`;
-    if (format === "bbcode") return `[h1]${title}[/h1]`;
-    if (format === "wiki") return `= ${title} =`;
-    return `# ${title}`;
+  const getFormattedTitle = (title: string) => {
+    return `<h1>${title}</h1>`;
   };
 
   const copyArticle = async (article: Article) => {
     try {
-      const topTitle = getFormattedTitle(article.title, state.outputFormat);
-      await navigator.clipboard.writeText(`${topTitle}\n\n${article.content}`);
+      const topTitle = getFormattedTitle(article.title);
+      await navigator.clipboard.writeText(`${topTitle}\n\n\n${article.content.replace(/^\s+/, "")}`);
       setCopiedId(article.id);
       setTimeout(() => setCopiedId(null), 2000);
     } catch {}
   };
 
   const copyAll = async () => {
-    const allText = state.articles.map((a) => `${getFormattedTitle(a.title, state.outputFormat)}\n\n${a.content}`).join("\n\n---\n\n");
+    const allText = state.articles.map((a) => `${getFormattedTitle(a.title)}\n\n\n${a.content.replace(/^\s+/, "")}`).join("\n\n---\n\n");
     try {
       await navigator.clipboard.writeText(allText);
       setCopiedId("ALL");

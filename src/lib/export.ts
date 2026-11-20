@@ -8,13 +8,9 @@ export async function generateZip(articles: Article[], format: OutputFormat) {
     const sanitizedTitle = article.title.replace(/[^a-z0-9]/gi, "_").replace(/_+/g, "_").toLowerCase().slice(0, 80);
     const filename = `${index + 1}_${sanitizedTitle}.txt`;
 
-    let formattedTitle = `# ${article.title}\n\n`;
-    if (format === "plain") formattedTitle = `${article.title}\n\n`;
-    if (format === "html") formattedTitle = `<h1>${article.title}</h1>\n\n`;
-    if (format === "bbcode") formattedTitle = `[h1]${article.title}[/h1]\n\n`;
-    if (format === "wiki") formattedTitle = `= ${article.title} =\n\n`;
-
-    const content = `${formattedTitle}${article.content}`;
+    const formattedTitle = `<h1>${article.title}</h1>\n\n\n`;
+    const body = article.content.replace(/^\s+/, "");
+    const content = `${formattedTitle}${body}`;
     zip.file(filename, content);
   });
 

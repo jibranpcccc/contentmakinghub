@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useAppContext } from "@/context/AppContext";
-import { GeneratedTitle, OutputFormat } from "@/lib/types";
+import { GeneratedTitle } from "@/lib/types";
 import { parseKeywordLines, formatKeywordItemsToText } from "@/lib/keywordParser";
 
 interface InputStepProps {
@@ -190,17 +190,13 @@ export default function InputStep({ onNext }: InputStepProps) {
         </div>
       ) : (
         <>
-          {/* Output Format Selection */}
+          {/* Output Format (HTML Only) */}
           <div>
             <label className="field-label">📄 Output Format</label>
-            <select value={state.outputFormat} onChange={(e) => dispatch({ type: "SET_OUTPUT_FORMAT", payload: e.target.value as OutputFormat })} style={{ width: "280px" }}>
-              <option value="markdown">Markdown (## headings, **bold**)</option>
-              <option value="plain">Plain Text (no formatting)</option>
-              <option value="html">HTML (headings only)</option>
-              <option value="bbcode">BBCode (forum style)</option>
-              <option value="wiki">Wiki (MediaWiki style)</option>
-            </select>
-            <p className="field-hint">Controls how headings and formatting appear in the generated articles.</p>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", background: "var(--bg-dark)", border: "1px solid var(--border-light)", borderRadius: "var(--radius-md)", padding: "0.55rem 0.9rem", fontSize: "0.9rem", fontWeight: 600 }}>
+              <span>HTML</span>
+              <span className="badge badge-accent">&lt;h1&gt; + 2 blank lines + &lt;h2&gt;/&lt;h3&gt;</span>
+            </div>
           </div>
 
           {/* Language Selection */}

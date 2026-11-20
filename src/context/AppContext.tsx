@@ -49,7 +49,7 @@ const defaultPrompts = [
 const initialState: AppState = {
   provider: "mistral",
   language: "English",
-  outputFormat: "markdown",
+  outputFormat: "html",
   keywords: [],
   keywordItems: [],
   exactMatchLink: true,

@@ -55,16 +55,11 @@ export async function POST(req: Request) {
         break;
     }
 
-    let wordRule = "Write exactly 500-600 words — not more, not less.";
-    let userWordRule = "Target: 500-600 words.";
-    let calcMaxTokens = 1300;
-
-    if (targetWordCount && targetWordCount !== "default") {
-      const targetInt = parseInt(targetWordCount);
-      wordRule = `CRITICAL LENGTH INSTRUCTION: Write approximately ${targetInt} words. Ensure your article is sufficiently detailed to reach this length, but conclude naturally once the topic is thoroughly covered. Do not cut off mid-sentence.`;
-      userWordRule = `Target: ~${targetInt} words. Ensure the full article is finished and not truncated.`;
-      calcMaxTokens = Math.min(4000, Math.max(900, Math.round(targetInt * 1.6) + 200));
-    }
+    const parsedTarget = targetWordCount && targetWordCount !== "default" ? parseInt(targetWordCount, 10) : 700;
+    const targetInt = Number.isFinite(parsedTarget) && parsedTarget >= 700 ? parsedTarget : 700;
+    const wordRule = `CRITICAL LENGTH INSTRUCTION: Write at least ${targetInt} words (aim for ${targetInt}-${targetInt + 150} words). Ensure your article is sufficiently detailed to reach this length, and conclude naturally once the topic is thoroughly covered. Do not cut off mid-sentence.`;
+    const userWordRule = `Target: ${targetInt}+ words. Ensure the full article is finished and not truncated.`;
+    const calcMaxTokens = Math.min(4000, Math.max(1500, Math.round(targetInt * 1.7) + 250));
 
     let linkRule = "";
     if (shouldLinkExact) {

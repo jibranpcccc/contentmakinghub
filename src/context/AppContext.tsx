@@ -59,7 +59,7 @@ const initialState: AppState = {
   generatedTitles: [],
   generationJobs: [],
   articles: [],
-  targetWordCount: "default",
+  targetWordCount: "700",
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {

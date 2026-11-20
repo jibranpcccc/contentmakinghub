@@ -68,8 +68,8 @@ export default function InputStep({ onNext }: InputStepProps) {
       count: base + (i < remainder ? 1 : 0),
     })).filter(t => t.count > 0);
 
-    // Bounded concurrency (5) so large keyword lists from Google Sheets don't overwhelm the browser/Edge
-    const CONCURRENCY = Math.min(5, kwTasks.length);
+    // Bounded concurrency (16) for blazing-fast title generation across 24 keys
+    const CONCURRENCY = Math.min(16, kwTasks.length);
     let nextTaskIdx = 0;
     const titleResults: GeneratedTitle[][] = new Array(kwTasks.length);
 
@@ -222,14 +222,13 @@ export default function InputStep({ onNext }: InputStepProps) {
 
           {/* Word Count Selection */}
           <div>
-            <label className="field-label">📝 Target Word Count</label>
-            <select value={state.targetWordCount || "default"} onChange={(e) => dispatch({ type: "SET_TARGET_WORD_COUNT", payload: e.target.value })} style={{ width: "280px" }}>
-              <option value="default">Default (Determined by prompt)</option>
+            <label className="field-label">📝 Target Word Count (700+ Words)</label>
+            <select value={state.targetWordCount && state.targetWordCount !== "default" ? state.targetWordCount : "700"} onChange={(e) => dispatch({ type: "SET_TARGET_WORD_COUNT", payload: e.target.value })} style={{ width: "280px" }}>
               {Array.from({ length: 19 }, (_, i) => 700 + i * 100).map(count => (
-                <option key={count} value={count.toString()}>{count} Words</option>
+                <option key={count} value={count.toString()}>{count}+ Words</option>
               ))}
             </select>
-            <p className="field-hint">Forces the AI to write a specific length without cutting off.</p>
+            <p className="field-hint">Minimum 700+ words by default. Forces the AI to write a complete article without cutting off.</p>
           </div>
 
           {/* Keywords & Optional URLs */}

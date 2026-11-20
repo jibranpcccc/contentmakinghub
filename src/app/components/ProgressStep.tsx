@@ -74,9 +74,9 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
     // In web browsers, limit concurrent streams to 8 to avoid socket starvation and ECONNRESET
     fetch(`/api/key-count?provider=${state.provider}`)
       .then(res => res.json())
-      .catch(() => ({ count: 8 }))
+      .catch(() => ({ count: 24 }))
       .then(data => {
-        const CONCURRENCY = Math.min(Math.max(data.count || 8, 4), 8);
+        const CONCURRENCY = Math.min(Math.max(data.count || 24, 8), 24);
         let nextIndex = 0;
 
         const processOne = async (jobIndex: number, workerIndex: number, attempt = 1) => {
@@ -103,7 +103,7 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
             language: state.language,
             outputFormat: state.outputFormat,
             provider: state.provider,
-            workerIndex: workerIndex,
+            workerIndex: jobIndex,
             targetWordCount: state.targetWordCount,
           }),
         });
@@ -159,7 +159,7 @@ export default function ProgressStep({ onCancel, onFinish }: ProgressStepProps) 
           const workers = Array.from({ length: CONCURRENCY }, async (_, workerIndex) => {
             // Rapid startup (50ms per thread) to prevent thread locks while starting all 24 workers immediately
             if (state.provider === "mistral") {
-              await new Promise(res => setTimeout(res, workerIndex * 50));
+              await new Promise(res => setTimeout(res, workerIndex * 15));
             }
             while (true) {
               const idx = nextIndex++;

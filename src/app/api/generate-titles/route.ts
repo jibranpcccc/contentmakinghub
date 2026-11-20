@@ -62,7 +62,7 @@ Rules:
         const content = await callMistral(
           systemPrompt,
           userMsg,
-          { temperature: 0.9, max_tokens: Math.max(800, batchCount * 45), response_format: { type: "json_object" } }
+          { model: "voxtral-small-latest", temperature: 0.9, max_tokens: Math.max(800, batchCount * 45), response_format: { type: "json_object" } }
         );
 
         let parsedTitles: string[] = [];

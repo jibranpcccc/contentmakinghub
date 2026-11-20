@@ -95,34 +95,51 @@ export function ensureExactMatchHyperlink(
     return lines.join("\n");
   }
 
-  // No valid body link found — link the first plain-text exact keyword occurrence in a body paragraph
+  // No valid body link found — link the first plain-text exact keyword occurrence in a middle body paragraph (after first heading if possible)
   const escapedKw = escapeRegExp(cleanKw);
   const isAsciiWord = /^[a-z0-9]/i.test(cleanKw) && /[a-z0-9]$/i.test(cleanKw);
   const kwPattern = isAsciiWord
     ? new RegExp(`(?<![\\w\\[/="'])${escapedKw}(?![\\w\\]"'])`, "i")
     : new RegExp(escapedKw, "i");
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (isHeadingLine(line, format)) continue;
-    if (line.includes(cleanUrl)) continue;
+  const firstHeadingIdx = lines.findIndex((l) => isHeadingLine(l, format) && l.trim().length > 0);
+  const startSearchIdx = firstHeadingIdx !== -1 ? firstHeadingIdx + 1 : 0;
 
-    if (kwPattern.test(line)) {
-      lines[i] = line.replace(kwPattern, exactLink);
-      return lines.join("\n");
+  for (const searchFrom of [startSearchIdx, 0]) {
+    for (let i = searchFrom; i < lines.length; i++) {
+      const line = lines[i];
+      if (isHeadingLine(line, format)) continue;
+      if (line.includes(cleanUrl)) continue;
+
+      if (kwPattern.test(line)) {
+        lines[i] = line.replace(kwPattern, exactLink);
+        return lines.join("\n");
+      }
     }
   }
 
-  // Fallback: insert a natural contextual reference at the end of the first substantial paragraph
-  for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
-    if (isHeadingLine(trimmed, format)) continue;
-    if (trimmed.length >= 60) {
-      const separator = /[.!?]$/.test(trimmed) ? " " : ". ";
-      lines[i] = `${lines[i]}${separator}Learn more about ${exactLink} for deeper insights.`;
-      return lines.join("\n");
+  // Fallback: build a grammatically natural sentence for the anchor type
+  const lowerKw = cleanKw.toLowerCase();
+  let naturalSentence = `For additional context, see this resource on ${exactLink}.`;
+  if (lowerKw.startsWith("read more")) {
+    naturalSentence = `You can ${exactLink} to explore these developments in greater detail.`;
+  } else if (/^[a-z0-9-]+\.[a-z]{2,}(\.[a-z]{2,})?$/i.test(cleanKw)) {
+    naturalSentence = `Coverage on ${exactLink} highlights how these strategies are being applied in practice.`;
+  } else if (cleanKw.split(/\s+/).length >= 6) {
+    naturalSentence = `As outlined in ${exactLink}, these approaches continue to evolve rapidly.`;
+  }
+
+  for (const searchFrom of [startSearchIdx, 0]) {
+    for (let i = searchFrom; i < lines.length; i++) {
+      const trimmed = lines[i].trim();
+      if (isHeadingLine(trimmed, format)) continue;
+      if (trimmed.length >= 60) {
+        const separator = /[.!?]$/.test(trimmed) ? " " : ". ";
+        lines[i] = `${lines[i]}${separator}${naturalSentence}`;
+        return lines.join("\n");
+      }
     }
   }
 
-  return `${lines.join("\n").trimEnd()}\n\nLearn more about ${exactLink}.`;
+  return `${lines.join("\n").trimEnd()}\n\n${naturalSentence}`;
 }

@@ -65,7 +65,11 @@ export async function POST(req: Request) {
     let linkRule = "";
     if (shouldLinkExact) {
       const exactFormattedLink = formatExactLink(cleanKeyword, cleanUrl, fmt);
-      linkRule = `\nHYPERLINK REQUIREMENT: You MUST include the exact-match keyword "${cleanKeyword}" hyperlinked to ${cleanUrl} EXACTLY ONCE naturally inside a body paragraph (NEVER inside any heading, and NEVER repeat the link more than once), using this EXACT syntax: ${exactFormattedLink}. Do NOT alter the anchor text "${cleanKeyword}" or the URL.`;
+      linkRule = `\nHYPERLINK REQUIREMENT:
+- Include the exact-match anchor "${cleanKeyword}" hyperlinked to ${cleanUrl} EXACTLY ONCE using this EXACT syntax: ${exactFormattedLink}.
+- PLACEMENT: Place it naturally inside a MIDDLE body paragraph (after the first H2 section). NEVER place it in the opening/intro paragraph and NEVER inside any heading.
+- NATURAL GRAMMAR: Build a smooth, grammatically complete sentence around the exact anchor text (e.g., for "read more about X": "You can ${exactFormattedLink} for additional clinical context."; for a title/headline: "As highlighted in ${exactFormattedLink}, ..."; for a domain: "Reports on ${exactFormattedLink} note that ..."). Never drop the anchor in as a broken fragment or use generic "check out this article:" filler.
+- Do NOT alter the anchor text "${cleanKeyword}" or the URL, and do NOT repeat the link more than once.`;
     }
 
     const systemPrompt = cleanPrompt
@@ -88,7 +92,7 @@ export async function POST(req: Request) {
         model,
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `You are writing a blog article for a reader who searched for "${cleanKeyword}" and clicked on this title: "${cleanTitle}". Write the full article in ${lang}. ${userWordRule}${shouldLinkExact ? ` Include the exact-match hyperlink ${formatExactLink(cleanKeyword, cleanUrl, fmt)} naturally once in a body paragraph (not in a heading).` : ""} Make it highly relevant, specific, and useful to that reader.` },
+          { role: "user", content: `You are writing a blog article for a reader who searched for "${cleanKeyword}" and clicked on this title: "${cleanTitle}". Write the full article in ${lang}. ${userWordRule}${shouldLinkExact ? ` Include the exact-match hyperlink ${formatExactLink(cleanKeyword, cleanUrl, fmt)} naturally once in a middle body paragraph (after the first H2, never in the intro or headings) inside a grammatically smooth sentence.` : ""} Make it highly relevant, specific, and useful to that reader.` },
         ],
         temperature: 0.75,
         top_p: 0.9,
